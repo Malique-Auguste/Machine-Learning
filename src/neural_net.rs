@@ -1,6 +1,6 @@
 use std::{cmp, fmt::Debug};
 
-use nalgebra::DMatrix;
+use nalgebra::{iter, DMatrix};
 use rand::{distributions::{Distribution, Uniform}, rngs::StdRng, SeedableRng};
 
 
@@ -12,15 +12,15 @@ pub struct NeuralNet {
 }
 
 impl NeuralNet {
-    pub fn new(act_func: ActFunc, shape: Vec<usize>, rand: bool) -> Result<NeuralNet, String> {
+    pub fn new(act_func: ActFunc, shape: Vec<usize>, rand_seed: Option<u64>) -> Result<NeuralNet, String> {
         if shape.len() < 2 {
             return Err("The size var must have at least 2 numbers which signify the number of inputs and outputs.".into());
         }
 
         let mut weights: Vec<DMatrix<f64>> = Vec::new();
 
-        if rand {
-            let mut rng = StdRng::seed_from_u64(0);
+        if let Some(seed) = rand_seed {
+            let mut rng = StdRng::seed_from_u64(seed);
             let range = Uniform::new(0.0, 2.0);
 
             for i in 1..shape.len() {
@@ -136,6 +136,51 @@ impl NeuralNet {
         }
         
         Ok(())
+    }
+
+    pub fn train(&mut self, input: Vec<DMatrix<f64>>, expected_output: Vec<DMatrix<f64>>, iterations: usize, alpha: f64) -> Result<Vec<f64>, String> {
+        
+        let input_shape = input[0].shape();
+        for i in 1..input.len() {
+            if input[i].shape() != input_shape {
+                return Err(format!("{}th input matrix doesn't have the same shape as the first item.", i))
+            }
+        }
+
+        let output_shape = expected_output[0].shape();
+        for i in 1..input.len() {
+            if expected_output[i].shape() != output_shape {
+                return Err(format!("{}th output matrix doesn't have the same shape as the first item.", i))
+            }
+        }
+
+        let mut avg_error: Vec<f64> = Vec::new();
+
+        for n in 0..iterations {
+            let mut current_error = 0.0;
+            for i in 0..input.len() {
+                self.forward_propogate(input[i].clone()).unwrap();
+                let layer_delta = (self.cached_output() - expected_output[i].clone()).sum();
+
+                current_error += layer_delta * layer_delta;
+
+                //println!("\n{:?}\n", nn);
+                self.backward_propogate(layer_delta, alpha).unwrap();
+            }
+
+            avg_error.push(current_error / (input.len() as f64));   
+        }
+
+        Ok(avg_error)
+    }
+
+    pub fn test(&mut self, input: DMatrix<f64>) -> Result<&DMatrix<f64>, String> {
+        match self.forward_propogate(input) {
+            Ok(_) => (),
+            Err(e) => return Err(e)
+        }
+
+        Ok(self.cached_output())
     }
 
     pub fn cached_output(&self) -> &DMatrix<f64> {
