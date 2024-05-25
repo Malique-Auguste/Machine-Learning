@@ -1,0 +1,8 @@
+Added random weights. When weights < 0, error shoots off to infinity
+Probably it jumps around so much because since there is only one set of data, there are so many ways to "solve" that
+because you aren't trying to find a solution for a trend, but simply trying to find how much ways you can get a specific output from 2 specific numbers
+
+For example, given 1 and 2, trying to get 3 we can have
+    1 + 2 = 3
+    5(1) - 2 = 3
+    -5(1) + 4(2) = 3

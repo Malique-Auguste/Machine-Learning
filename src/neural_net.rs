@@ -72,7 +72,6 @@ impl NeuralNet {
 
     pub fn backward_propogate(&mut self, network_error: f64, alpha: f64) -> Result<(), String> {
         //network_error / delta = average absolute valoe of calculated - expected output
-        let alpha = 0.1;
 
         if self.weights.len() != self.layer_output_cache.len() - 1 {
             return Err("Run forward_propogate before backward.".into())
