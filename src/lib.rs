@@ -11,7 +11,7 @@ mod tests {
         let input = DMatrix::from_vec(1, 2, vec![1.0, 2.0]);
         let expected_output = DMatrix::from_element(1, 1, 2.75);
 
-        let mut nn = NeuralNet::new(ActFunc::ReLU, vec![2, 3, 1]).unwrap();
+        let mut nn = NeuralNet::new(ActFunc::ReLU, vec![2, 3, 1], false).unwrap();
 
         println!("NN: {:?}", nn.get_weights());
 
@@ -25,7 +25,7 @@ mod tests {
         let input = DMatrix::from_vec(1, 2, vec![-6.0, 1.0]);
         let expected_output = DMatrix::from_element(1, 1, 0.5);
 
-        let mut nn = NeuralNet::new(ActFunc::ReLU, vec![2, 2, 1]).unwrap();
+        let mut nn = NeuralNet::new(ActFunc::ReLU, vec![2, 2, 1], false).unwrap();
 
         println!("{:?}", nn.get_weights());
 
@@ -50,21 +50,25 @@ mod tests {
 
     #[test]
     fn basic_net() {
-        let mut nn = NeuralNet::new(ActFunc::ReLU, vec![2, 2, 1]).unwrap();
+        let mut nn = NeuralNet::new(ActFunc::ReLU, vec![2, 3, 1], true).unwrap();
         let input: DMatrix<f64> = DMatrix::from_vec(1, 2, vec![1.0, -3.0]);
-        let expected_output = DMatrix::from_element(1, 1, 4.0);
-        let alpha = 0.5;
+        let expected_output = DMatrix::from_element(1, 1, 4.5);
+        let alpha = 0.1;
 
-        for i in 0..25 {
+        println!("\n{:?}\n", nn);
+
+
+        for i in 0..15 {
             nn.forward_propogate(input.clone()).unwrap();
             let layer_delta = (nn.cached_output() - expected_output.clone()).sum();
 
             println!("{}) Output: {:?}, Error: {}", i, nn.cached_output()[0], layer_delta * layer_delta);
+            //println!("\n{:?}\n", nn);
             nn.backward_propogate(layer_delta, alpha).unwrap();
 
         }
 
-        println!("\n{:?}\n", nn)
+        //println!("\n{:?}\n", nn)
         
 
     }

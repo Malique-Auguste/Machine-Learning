@@ -1,6 +1,7 @@
 use std::{cmp, fmt::Debug};
 
 use nalgebra::DMatrix;
+use rand::{distributions::{Distribution, Uniform}, rngs::StdRng, SeedableRng};
 
 
 pub struct NeuralNet {
@@ -11,23 +12,36 @@ pub struct NeuralNet {
 }
 
 impl NeuralNet {
-    pub fn new(act_func: ActFunc, shape: Vec<usize>) -> Result<NeuralNet, String> {
+    pub fn new(act_func: ActFunc, shape: Vec<usize>, rand: bool) -> Result<NeuralNet, String> {
         if shape.len() < 2 {
             return Err("The size var must have at least 2 numbers which signify the number of inputs and outputs.".into());
         }
 
         let mut weights: Vec<DMatrix<f64>> = Vec::new();
 
-        for i in 1..shape.len() {
-            //Weights are matricies with a number of rows equal to the number of inputs + bias node, and number of columns equal to the number of outputs.
-            weights.push(
-                DMatrix::from_fn(shape[i-1] + 1, shape[i], |i, j| ((i+j + 1) as f64))
-            );
+        if rand {
+            let mut rng = StdRng::seed_from_u64(0);
+            let range = Uniform::new(0.0, 2.0);
+
+            for i in 1..shape.len() {
+                //Weights are matricies with a number of rows equal to the number of inputs + bias node, and number of columns equal to the number of outputs.
+                weights.push(
+                    DMatrix::from_fn(shape[i-1] + 1, shape[i], |i, j| range.sample(&mut rng))
+                );
+            }
+        }
+        else {
+            for i in 1..shape.len() {
+                //Weights are matricies with a number of rows equal to the number of inputs + bias node, and number of columns equal to the number of outputs.
+                weights.push(
+                    DMatrix::from_fn(shape[i-1] + 1, shape[i], |i, j| ((i+j + 1) as f64))
+                );
+            }
         }
 
         Ok(NeuralNet {
             act_func,
-            layer_output_cache: Vec::new(),
+            layer_output_cache: vec![DMatrix::from_element(1, 1, 1.0)],
             shape,
             weights
         })
