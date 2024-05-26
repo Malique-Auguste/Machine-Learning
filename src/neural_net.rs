@@ -1,3 +1,5 @@
+use crate::act_func::ActFunc;
+
 use std::{cmp, fmt::Debug};
 
 use nalgebra::{iter, DMatrix};
@@ -115,14 +117,13 @@ impl NeuralNet {
             last_column_index = weight_input.shape().1;
             weight_input = weight_input.insert_column(last_column_index, 1.0);
 
-            weight_deltas.push(
-                //calculates delta for the weights
-                (layer_error.clone() * weight_input).transpose()
-            );
+            let (new_weight_delta, new_layer_error) = self.act_func.delta(layer_error, weight_input, self.weights[i].clone());
+
+            weight_deltas.push(new_weight_delta);
 
             //calculates delta for the nodes inputing into the current weights
             //In the next iteration of the loop, this will be the error of the output nodes relatvie to the weights 
-            layer_error = self.weights[i].clone() * layer_error;
+            layer_error = new_layer_error;
 
             last_row_index = layer_error.shape().1 - 1;
             layer_error = layer_error.remove_row(last_row_index);
@@ -203,24 +204,3 @@ impl Debug for NeuralNet {
 }
 
 
-//Activation Funciton
-#[derive(Debug)]
-pub enum ActFunc {
-    ReLU
-}
-
-impl ActFunc {
-    pub fn apply(&self, mut input: DMatrix<f64>) -> DMatrix<f64> {
-        match self {
-            ActFunc::ReLU => {
-                for elem in input.iter_mut() {
-                    if *elem < 0.0 {
-                        *elem = 0.0
-                    }
-                }
-            }
-        }
-
-        input
-    }
-}

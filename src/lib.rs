@@ -1,9 +1,11 @@
 mod neural_net;
+mod act_func;
 
 
 #[cfg(test)]
 mod tests {
-    use crate::neural_net::{ActFunc, NeuralNet};
+    use crate::neural_net::{NeuralNet};
+    use crate::act_func::*;
     use nalgebra::DMatrix;
 
     #[test]
@@ -36,13 +38,15 @@ mod tests {
 
     #[test]
     fn matrix() {
-        let m1: DMatrix<i8> = DMatrix::from_vec(1, 3, vec![1, 2, 3]);
-        let m2: DMatrix<i8> = DMatrix::from_vec(1, 4, vec![1, 2, 3, 1]);
+        let m1: DMatrix<f64> = DMatrix::from_vec(1, 3, vec![1.0, 2.0, 3.0]);
+        let m2: DMatrix<f64> = DMatrix::from_vec(1, 4, vec![1.0, 2.0, 3.0, 1.0]);
 
 
-        let mut input: DMatrix<i8> = m1.clone();
+        let mut input: DMatrix<f64> = m1.clone();
         let num_columns = input.shape().1;
-        input = input.insert_column(num_columns, 1);
+        input = input.insert_column(num_columns, 1.0);
+
+        println!("{:?}", generate_diagonal_matrix(m1).unwrap());
 
         assert_eq!(m2, input)
 
@@ -73,7 +77,7 @@ mod tests {
 
     #[test]
     fn basic_net_2() {
-        let mut nn = NeuralNet::new(ActFunc::ReLU, vec![2, 2, 1], Some(0)).unwrap();
+        let mut nn = NeuralNet::new(ActFunc::Sigmoid, vec![2, 2, 1], Some(0)).unwrap();
         let input: Vec<DMatrix<f64>> = vec![DMatrix::from_vec(1, 2, vec![1.0, -3.0]),
                                             DMatrix::from_vec(1, 2, vec![3.0, 2.0]),
                                             DMatrix::from_vec(1, 2, vec![-2.0, -4.5]),
@@ -83,7 +87,7 @@ mod tests {
                                             DMatrix::from_vec(1, 2, vec![-5.0, 1.5]),
                                             DMatrix::from_vec(1, 2, vec![-4.0, -1.2]),
                                             DMatrix::from_vec(1, 2, vec![-31.0, -5.5]),
-                                            DMatrix::from_vec(1, 2, vec![26.5, 28.0])];
+                                            DMatrix::from_vec(1, 2, vec![27.0, 28.0])];
 
         //Rules: If LHS>RHS, 1, else, 0
         let expected_output: Vec<DMatrix<f64>> = vec![DMatrix::from_element(1, 1, 1.0),
@@ -100,7 +104,7 @@ mod tests {
         let training_error =  nn.train(input, expected_output, 100, 0.05).unwrap();
 
         for i in 0..(training_error.len() - 1) {
-            if i % 5 == 0 {
+            if i % 10 == 0 {
                 println!("{})Avg Error: {}", i, training_error[i])
             }
         }
@@ -110,7 +114,7 @@ mod tests {
 
         let test_input: Vec<DMatrix<f64>> = vec![DMatrix::from_vec(1, 2, vec![12.0, -3.0]),
                                                 DMatrix::from_vec(1, 2, vec![-7.0, 2.5]),
-                                                DMatrix::from_vec(1, 2, vec![-13.0, -12.5])];
+                                                DMatrix::from_vec(1, 2, vec![-13.0, -12.0])];
         let test_output: Vec<DMatrix<f64>> = vec![DMatrix::from_element(1, 1, 1.0),
                                                 DMatrix::from_element(1, 1, 0.0),
                                                 DMatrix::from_element(1, 1, 0.0)];
@@ -126,7 +130,7 @@ mod tests {
 
     #[test]
     fn xor() {
-        let mut nn = NeuralNet::new(ActFunc::ReLU, vec![2, 3, 1], Some(1)).unwrap();
+        let mut nn = NeuralNet::new(ActFunc::Sigmoid, vec![2, 3, 1], Some(1)).unwrap();
         let input: Vec<DMatrix<f64>> = vec![DMatrix::from_vec(1, 2, vec![0.0, 0.0]),
                                             DMatrix::from_vec(1, 2, vec![0.0, 1.0]),
                                             DMatrix::from_vec(1, 2, vec![1.0, 0.0]),
