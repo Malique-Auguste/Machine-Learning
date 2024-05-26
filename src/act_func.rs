@@ -47,8 +47,11 @@ impl ActFunc {
             },
 
             ActFunc::Sigmoid => {
+                // let s = sigmoid function
+                //ds = s(1-s)
                 let sigmoid_result: DMatrix<f64> = self.apply(input.clone() * weights.clone());
-                let sigmoid_derivative: DMatrix<f64> = sigmoid_result.component_mul(&sigmoid_result.add_scalar(-1.0));
+                let mut sigmoid_derivative: DMatrix<f64> = sigmoid_result.clone() * -1.0;
+                sigmoid_derivative = sigmoid_result.component_mul(&sigmoid_derivative.add_scalar(1.0));
 
                 // let s = sigmoid function
                 //ds = s(1-s)
