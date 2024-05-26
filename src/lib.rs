@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn xor() {
-        let mut nn = NeuralNet::new(ActFunc::Sigmoid, vec![2, 3, 1], Some(1)).unwrap();
+        let mut nn = NeuralNet::new(ActFunc::Sigmoid, vec![2, 3, 1], Some(3)).unwrap();
         let input: Vec<DMatrix<f64>> = vec![DMatrix::from_vec(1, 2, vec![0.0, 0.0]),
                                             DMatrix::from_vec(1, 2, vec![0.0, 1.0]),
                                             DMatrix::from_vec(1, 2, vec![1.0, 0.0]),
@@ -188,7 +188,7 @@ mod tests {
                                                     DMatrix::from_element(1, 1, 1.0),
                                                     DMatrix::from_element(1, 1, 0.0)];
 
-        let training_error =  nn.train(input.clone(), expected_output.clone(), 100, 0.05).unwrap();
+        let training_error =  nn.train(input.clone(), expected_output.clone(), 300, 0.5).unwrap();
 
         for i in 0..(training_error.len() - 1) {
             if i % 10 == 0 {
