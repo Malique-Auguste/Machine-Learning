@@ -72,7 +72,7 @@ impl NeuralNet {
         Ok(())
     }
 
-    pub fn backward_propogate(&mut self, network_error: f64, alpha: f64) -> Result<(), String> {
+    pub fn backward_propogate(&mut self, mut layer_error: DMatrix<f64>, alpha: f64) -> Result<(), String> {
         //network_error / delta = average absolute valoe of calculated - expected output
 
         if self.weights.len() != self.layer_output_cache.len() - 1 {
@@ -84,40 +84,29 @@ impl NeuralNet {
 
         //println!("Weights: {:?}\nLayer Output: {:?}", self.weights, self.layer_output_cache);
 
-        //position of second to last output and of last weights
-        let position = self.layer_output_cache.len() - 2;
-
         //dE/dw, change in weights to reduce error = input value sof weights * error of output layer
         let mut weight_deltas: Vec<DMatrix<f64>> = Vec::new();
 
         //acconting for bias node
-        let mut weight_input = self.layer_output_cache[position].clone();
-        let mut last_column_index = weight_input.shape().1;
-        weight_input = weight_input.insert_column(last_column_index, 1.0);
+        let mut weight_input: DMatrix<f64>;
 
-        weight_deltas.push(
-            //calculates delta for the last set of weights
-            (weight_input * network_error).transpose()
-        );
+        //println!("out {:?}", self.layer_output_cache);
+        //println!("weig {:?}", self.weights);
 
-
-        //finds the error of the outputs of the weights
-        //finds the error of the output layer/nodes right before the last weights
-        let mut layer_error: DMatrix<f64> = self.weights[position].clone() * network_error;
-        //removes layer error for bias node as bias node
-        let mut last_row_index = layer_error.shape().0 - 1;
-        layer_error = layer_error.remove_row(last_row_index);
 
         //starts off with 2nd to last set of weights
-        for i in (0..(self.weights.len() - 1)).rev() {
-            //println!("\n{})Layer Err: {:?}\n", i, layer_error);
+        for i in (0..(self.weights.len())).rev() {
+            //println!("\t({})Layer Err: {:?}", i, layer_error);
 
             //accointing for bias node
             weight_input = self.layer_output_cache[i].clone();
-            last_column_index = weight_input.shape().1;
+            let last_column_index = weight_input.shape().1;
             weight_input = weight_input.insert_column(last_column_index, 1.0);
 
             let (new_weight_delta, new_layer_error) = self.act_func.delta(layer_error, weight_input, self.weights[i].clone());
+            //let (new_weight_delta, new_layer_error) = ActFunc::ReLU.delta(layer_error, weight_input, self.weights[i].clone());
+
+            //println!("\t({})Weight Err: {:?}", i, new_weight_delta);
 
             weight_deltas.push(new_weight_delta);
 
@@ -125,7 +114,7 @@ impl NeuralNet {
             //In the next iteration of the loop, this will be the error of the output nodes relatvie to the weights 
             layer_error = new_layer_error;
 
-            last_row_index = layer_error.shape().1 - 1;
+            let last_row_index = layer_error.shape().0 - 1;
             layer_error = layer_error.remove_row(last_row_index);
 
         }
@@ -161,9 +150,9 @@ impl NeuralNet {
             let mut current_error = 0.0;
             for i in 0..input.len() {
                 self.forward_propogate(input[i].clone()).unwrap();
-                let layer_delta = (self.cached_output() - expected_output[i].clone()).sum();
+                let layer_delta = self.cached_output() - expected_output[i].clone();
 
-                current_error += layer_delta * layer_delta;
+                current_error += (layer_delta.clone() * layer_delta.clone()).sum();
 
                 //println!("\n{:?}\n", nn);
                 self.backward_propogate(layer_delta, alpha).unwrap();

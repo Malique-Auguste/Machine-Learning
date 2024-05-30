@@ -30,7 +30,7 @@ impl ActFunc {
         input
     }
 
-    pub fn delta(&self, layer_error: DMatrix<f64>, input: DMatrix<f64>, mut weights: DMatrix<f64>) -> (DMatrix<f64>, DMatrix<f64>) {
+    pub fn delta(&self, layer_error: DMatrix<f64>, input: DMatrix<f64>, weights: DMatrix<f64>) -> (DMatrix<f64>, DMatrix<f64>) {
         //input must be a single row
         //weights are 2d with rows = numebr of input nodes, and columns = #output nodes
 
@@ -55,10 +55,10 @@ impl ActFunc {
 
                 // let s = sigmoid function
                 //ds = s(1-s)
-                //dW (layer 2) = Error (layer 3) * Input (layer 2) * ds (layer 3)
+                //dW (layer 2) = Input (layer 2) * Error (layer 3) *  ds (layer 3)
                 new_weight_delta = input.transpose() * layer_error.transpose().component_mul(&sigmoid_derivative);
                 
-                new_layer_error = weights * layer_error.component_mul(&sigmoid_derivative.transpose());
+                new_layer_error = weights * layer_error;//.component_mul(&sigmoid_derivative.transpose());
             }
             
         }
