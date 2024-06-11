@@ -1,11 +1,11 @@
 use crate::act_func::ActFunc;
 
-use std::{cmp, fmt::Debug};
-
+use std::time::{Duration, Instant};
+use std::fmt::Debug;
 use nalgebra::{iter, DMatrix};
-use rand::{distributions::{Distribution, Uniform}, rngs::StdRng, SeedableRng};
+use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, SeedableRng};
 
-
+//Neural Network
 pub struct NeuralNet {
     act_func: ActFunc,
     layer_output_cache: Vec<DMatrix<f64>>,
@@ -14,33 +14,24 @@ pub struct NeuralNet {
 }
 
 impl NeuralNet {
-    pub fn new(act_func: ActFunc, shape: Vec<usize>, rand_seed: Option<u64>) -> Result<NeuralNet, String> {
+    pub fn new(act_func: ActFunc, shape: Vec<usize>, rand_seed: u64) -> Result<NeuralNet, String> {
         if shape.len() < 2 {
             return Err("The size var must have at least 2 numbers which signify the number of inputs and outputs.".into());
         }
 
         let mut weights: Vec<DMatrix<f64>> = Vec::new();
+        
+        //Based on the provided shape of the network (# of neurons per layer), weights are generated at random with a uniform distribution betwee +-2
+        let mut rng = StdRng::seed_from_u64(rand_seed);
+        let range = Uniform::new(-1.0, 1.0);
 
-        if let Some(seed) = rand_seed {
-            let mut rng = StdRng::seed_from_u64(seed);
-            let range = Uniform::new(0.0, 2.0);
-
-            for i in 1..shape.len() {
-                //Weights are matricies with a number of rows equal to the number of inputs + bias node, and number of columns equal to the number of outputs.
-                weights.push(
-                    DMatrix::from_fn(shape[i-1] + 1, shape[i], |i, j| range.sample(&mut rng))
-                );
-            }
+        for i in 1..shape.len() {
+            //Weights are matricies with a number of rows equal to the number of inputs + bias node, and number of columns equal to the number of outputs.
+            weights.push(
+                DMatrix::from_fn(shape[i-1] + 1, shape[i], |_, _| range.sample(&mut rng))
+            );
         }
-        else {
-            for i in 1..shape.len() {
-                //Weights are matricies with a number of rows equal to the number of inputs + bias node, and number of columns equal to the number of outputs.
-                weights.push(
-                    DMatrix::from_fn(shape[i-1] + 1, shape[i], |i, j| ((i+j + 1) as f64))
-                );
-            }
-        }
-
+        
         Ok(NeuralNet {
             act_func,
             layer_output_cache: vec![DMatrix::from_element(1, 1, 1.0)],
@@ -58,8 +49,8 @@ impl NeuralNet {
         self.layer_output_cache.push(input);
 
         for layer in self.weights.iter() {
-            //extending input to include a bias node
 
+            //extending input to include a bias node
             let mut input: DMatrix<f64> = self.layer_output_cache.last().unwrap().clone();
             let last_column_index = input.shape().1;
             input = input.insert_column(last_column_index, 1.0);
@@ -72,96 +63,103 @@ impl NeuralNet {
         Ok(())
     }
 
-    pub fn backward_propogate(&mut self, mut layer_error: DMatrix<f64>, alpha: f64) -> Result<(), String> {
-        //network_error / delta = average absolute valoe of calculated - expected output
+    pub fn backward_propogate(&mut self, mut layer_error: DMatrix<f64>,dropout: bool) -> Result<Vec<DMatrix<f64>>, String> {
+        //layer_error = calculated output - expected output (after forwrd propogation)
+        //dropout randomly turns off half the nodes on back propogation as to not overfit network to data
 
+        //ensures that forward propogation was done nd thus that there are layer outputs
         if self.weights.len() != self.layer_output_cache.len() - 1 {
             return Err("Run forward_propogate before backward.".into())
         }
-        else if alpha > 1.0 || alpha < 0.0 {
-            return Err("Alpha must be between zero and 1, as it is used to slow down the chnage in the weights as to not overshoot".into());
-        }
 
-        //println!("Weights: {:?}\nLayer Output: {:?}", self.weights, self.layer_output_cache);
 
-        //dE/dw, change in weights to reduce error = input value sof weights * error of output layer
+        //Vector representing the error in the weights between layers
+        //This vector is reversed. That is, the last set of weights in the network (which connects to the output layer) is first in this list
         let mut weight_deltas: Vec<DMatrix<f64>> = Vec::new();
 
-        //acconting for bias node
+        //shows the input into the weights, or rather the output of the lyaer immediately before the weights
         let mut weight_input: DMatrix<f64>;
 
-        //println!("out {:?}", self.layer_output_cache);
-        //println!("weig {:?}", self.weights);
+        //used for dropout
+        let mut rng = StdRng::seed_from_u64(0);
+        let range = Bernoulli::new(0.5).unwrap();
 
-
-        //starts off with 2nd to last set of weights
+        //backpropogates from the last set of weights
         for i in (0..(self.weights.len())).rev() {
-            //println!("\t({})Layer Err: {:?}", i, layer_error);
 
             //accointing for bias node
             weight_input = self.layer_output_cache[i].clone();
             let last_column_index = weight_input.shape().1;
             weight_input = weight_input.insert_column(last_column_index, 1.0);
 
+            //dropout vector essentially randomly turns off half of the nodes to intorduce noise and avoid overfitting. thus multiply by 2
+            if dropout {
+                let dropout_vector = DMatrix::from_fn(weight_input.shape().0, weight_input.shape().1, |_, _| range.sample(&mut rng) as i8 as f64);
+                weight_input = weight_input.component_mul(&dropout_vector) * 2.0;
+            }
+
+            //calculates the error for each layer depending on the function
             let (new_weight_delta, new_layer_error) = self.act_func.delta(layer_error, weight_input, self.weights[i].clone());
-            //let (new_weight_delta, new_layer_error) = ActFunc::ReLU.delta(layer_error, weight_input, self.weights[i].clone());
-
-            //println!("\t({})Weight Err: {:?}", i, new_weight_delta);
-
+            
             weight_deltas.push(new_weight_delta);
 
-            //calculates delta for the nodes inputing into the current weights
-            //In the next iteration of the loop, this will be the error of the output nodes relatvie to the weights 
+            //saves this iteration of the layer error, to be used in the following caluclation
             layer_error = new_layer_error;
 
+            //removes error associated with bias node as the bias node doesn't backpropogate, that is: it has nothing connecitng to it
             let last_row_index = layer_error.shape().0 - 1;
             layer_error = layer_error.remove_row(last_row_index);
 
         }
 
-        //println!("\n\nWeight Deltas: {:?}", weight_deltas);
-
-        for i in 0..self.weights.len() {
-            self.weights[i] -= weight_deltas.pop().unwrap() * alpha
-        }
         
-        Ok(())
+        Ok(weight_deltas)
+
     }
 
-    pub fn train(&mut self, input: Vec<DMatrix<f64>>, expected_output: Vec<DMatrix<f64>>, iterations: usize, alpha: f64) -> Result<Vec<f64>, String> {
+    pub fn train(&mut self, input: Vec<DMatrix<f64>>, expected_output: Vec<DMatrix<f64>>, settings: &TSettings) -> Result<(), String> {
         
-        let input_shape = input[0].shape();
-        for i in 1..input.len() {
-            if input[i].shape() != input_shape {
-                return Err(format!("{}th input matrix doesn't have the same shape as the first item.", i))
+        //ensures that the matricies for the inputs and outputs are correct
+        for i in 0..input.len() {
+            if input[i].shape() != (1, self.shape[0]) {
+                return Err(format!("{}th input matrix doesn't have the expected shape. {:?} != {:?}", i, input[i].shape(), (1, self.shape[0])))
             }
         }
 
-        let output_shape = expected_output[0].shape();
-        for i in 1..input.len() {
-            if expected_output[i].shape() != output_shape {
-                return Err(format!("{}th output matrix doesn't have the same shape as the first item.", i))
+        for i in 0..input.len() {
+            if expected_output[i].shape() != (1, *self.shape.last().unwrap()) {
+                return Err(format!("{}th output matrix doesn't have the expected shape. {:?} != {:?}", i, expected_output[i].shape(), (1, *self.shape.last().unwrap())))
             }
         }
+        
+        let mut start = Instant::now();
 
-        let mut avg_error: Vec<f64> = Vec::new();
+        for iter_num in 0..(settings.iterations + 1) {
 
-        for n in 0..iterations {
             let mut current_error = 0.0;
             for i in 0..input.len() {
-                self.forward_propogate(input[i].clone()).unwrap();
-                let layer_delta = self.cached_output() - expected_output[i].clone();
 
-                current_error += (layer_delta.clone() * layer_delta.clone()).sum();
+                self.forward_propogate(input[i].clone()).unwrap();
+                let layer_delta = (self.cached_output() - expected_output[i].clone()).transpose();
+
+                current_error += (layer_delta.clone().component_mul(&layer_delta)).sum();
 
                 //println!("\n{:?}\n", nn);
-                self.backward_propogate(layer_delta, alpha).unwrap();
-            }
+                let mut weight_deltas = self.backward_propogate(layer_delta, settings.dropout).unwrap();
+                for i in 0..self.weights.len() {
+                    self.weights[i] -= weight_deltas.pop().unwrap() * settings.alpha
+                }
+            } 
 
-            avg_error.push(current_error / (input.len() as f64));   
+            if settings.print_frequency != 0 {
+                if iter_num % (settings.iterations / settings.print_frequency) == 0 || iter_num == settings.iterations{
+                    println!("{}) Avg Error: {}\tTime Taken: {:?}", iter_num, current_error / (input.len() as f64), start.elapsed());
+                    start = Instant::now();
+                }
+            }
         }
 
-        Ok(avg_error)
+        Ok(())
     }
 
     pub fn test(&mut self, input: DMatrix<f64>) -> Result<&DMatrix<f64>, String> {
@@ -192,4 +190,26 @@ impl Debug for NeuralNet {
     }
 }
 
+//training settings
+pub struct TSettings{
+    iterations: usize,
+    alpha: f64,
+    dropout: bool,
+    print_frequency: usize
+}
 
+impl TSettings {
+    pub fn new(iterations: usize, alpha: f64, dropout: bool, print_frequency: usize) -> Result<TSettings, String> {
+        if alpha < 1.0 && alpha > 0.0 {
+            Ok(TSettings {
+                iterations,
+                alpha,
+                dropout,
+                print_frequency
+            })
+        }
+        else {
+            Err("Alpha must be between 1 and 0".into())
+        }
+    }
+}

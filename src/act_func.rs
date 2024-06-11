@@ -1,5 +1,5 @@
 use nalgebra::{DMatrix, Vector};
-use std::{f64::consts::E, fmt::DebugList, process::Output};
+use std::{alloc::Layout, f64::consts::E, fmt::DebugList, process::Output};
 
 
 //Activation Funciton
@@ -56,6 +56,7 @@ impl ActFunc {
                 // let s = sigmoid function
                 //ds = s(1-s)
                 //dW (layer 2) = Input (layer 2) * Error (layer 3) *  ds (layer 3)
+                //println!("le: {:?}, sd: {:?}", layer_error.shape(), sigmoid_derivative.shape());
                 new_weight_delta = input.transpose() * layer_error.transpose().component_mul(&sigmoid_derivative);
                 
                 new_layer_error = weights * layer_error;//.component_mul(&sigmoid_derivative.transpose());
