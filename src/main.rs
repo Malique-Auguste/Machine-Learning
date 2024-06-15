@@ -1,35 +1,37 @@
-mod neural_net;
-mod act_func;
-mod dataset_handler;
+use machine_learning::neural_network::{*, act_func::*, mlp::*};
+use machine_learning::dataset_handler::*;
 
-use neural_net::*;
-use act_func::*;
 use nalgebra::DMatrix;
-use dataset_handler::read_mnist;
 
 fn main() {
-    let mut nn = NeuralNet::new(ActFunc::Sigmoid, vec![784, 40, 10], 2).unwrap();
+    println!("Running...");
+
+    let mut nn = MLP::new(ActFunc::Sigmoid, vec![784, 40, 10], 2).unwrap();
     
-    let (mut input , mut expected_output) = read_mnist("mnist/mnist_train.csv".into()).unwrap();
+    let (mut input , mut expected_output) = read_mnist(".git/lfs/objects/fb/60/fb60bc58af4dac3554e394af262b3184479833d3cc540ff8783f274b73492d5d".into()).unwrap();
     let input: Vec<DMatrix<f64>> = input.drain(0..1000).collect();
     let expected_output: Vec<DMatrix<f64>> = expected_output.drain(0..1000).collect();
+    let training_data = TData::new(input, expected_output).unwrap();
 
 
-    let tsettings = TSettings::new(30, 0.005, false, 10).unwrap();
+    let (mut test_input, mut test_output) = read_mnist(".git/lfs/objects/51/c2/51c292478d94ec3a01461bdfa82eb0885d262eb09e615679b2d69dedb6ad09e7".into()).unwrap();
+    let test_input: Vec<DMatrix<f64>> = test_input.drain(0..100).collect();
+    let test_output: Vec<DMatrix<f64>> = test_output.drain(0..100).collect();
+    let testing_data = TData::new(test_input.clone(), test_output.clone()).unwrap();
 
-    nn.train(input, expected_output, &tsettings).unwrap();
 
-    let (mut test_input, mut test_output) = read_mnist("mnist/mnist_test.csv".into()).unwrap();
-    let test_input: Vec<DMatrix<f64>> = test_input.drain(0..1000).collect();
-    let test_output: Vec<DMatrix<f64>> = test_output.drain(0..1000).collect();
+    let tsettings = TSettings::new(100, 0.005, true, 15).unwrap();
+    nn.train(training_data, Some(testing_data), &tsettings).unwrap();
 
-    let mut sum_error = 0.0;
-    for i in 0..test_input.len() {
+    
+
+    for i in (0..test_input.len()).step_by(test_input.len() / 3) {
         let output = nn.test(test_input[i].clone()).unwrap();
-        let error = (output - test_output[i].clone()).sum();
+        let error = output - test_output[i].clone();
+        
+        let error = error.component_mul(&error).sum();
 
-        sum_error += error * error;
+        println!("\nExpected: {:?}\nCalculated: {:?}\nError: {}", test_output[i].data, output.data, error);
+        
     }
-
-    println!("\nTest error: {}", sum_error / test_output.len() as f64)
 }

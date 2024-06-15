@@ -16,8 +16,6 @@ pub fn read_mnist(path: String) -> Result<(Vec<DMatrix<f64>>, Vec<DMatrix<f64>>)
     //splits mnist_data off into different images
     let mnist_data: Vec<String> = mnist_data.trim().split("\n").map(|line| line.into()).collect();
 
-    println!("Number of images: {}", mnist_data.len());
-
     //converts tests data images from string to list of numbers
     let mut mnist_input_data: Vec<Vec<f64>> = mnist_data.into_iter().map(|line| {
         line.split(',').map(|num| {
@@ -31,7 +29,7 @@ pub fn read_mnist(path: String) -> Result<(Vec<DMatrix<f64>>, Vec<DMatrix<f64>>)
     let output_template: DMatrix<f64> = DMatrix::from_vec(1, 10, vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
 
     let mnist_output_data: Vec<DMatrix<f64>> = mnist_input_data.iter_mut().map(|image_data| {
-        let output_num = image_data.remove(0);
+        let output_num = image_data.remove(0) * 255.0;
         let mut output_matrix = output_template.clone();
         output_matrix[(0, output_num as usize)] = 1.0;
 
@@ -40,5 +38,7 @@ pub fn read_mnist(path: String) -> Result<(Vec<DMatrix<f64>>, Vec<DMatrix<f64>>)
     
     let mnist_input_data: Vec<DMatrix<f64>> = mnist_input_data.into_iter().map(|image_data| DMatrix::from_vec(1, 28*28, image_data)).collect();
     
+    println!("Number of images: {}", mnist_input_data.len());
+
     Ok((mnist_input_data, mnist_output_data))
 }

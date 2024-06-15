@@ -1,20 +1,21 @@
-use crate::act_func::ActFunc;
+use super::act_func::ActFunc;
+use super::{TData, TSettings};
 
 use std::time::{Duration, Instant};
 use std::fmt::Debug;
 use nalgebra::{iter, DMatrix};
 use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, SeedableRng};
 
-//Neural Network
-pub struct NeuralNet {
+//Multilayer Perceptron
+pub struct MLP {
     act_func: ActFunc,
     layer_output_cache: Vec<DMatrix<f64>>,
     shape: Vec<usize>,
     weights: Vec<DMatrix<f64>>,
 }
 
-impl NeuralNet {
-    pub fn new(act_func: ActFunc, shape: Vec<usize>, rand_seed: u64) -> Result<NeuralNet, String> {
+impl MLP {
+    pub fn new(act_func: ActFunc, shape: Vec<usize>, rand_seed: u64) -> Result<MLP, String> {
         if shape.len() < 2 {
             return Err("The size var must have at least 2 numbers which signify the number of inputs and outputs.".into());
         }
@@ -32,7 +33,7 @@ impl NeuralNet {
             );
         }
         
-        Ok(NeuralNet {
+        Ok(MLP {
             act_func,
             layer_output_cache: vec![DMatrix::from_element(1, 1, 1.0)],
             shape,
@@ -117,44 +118,71 @@ impl NeuralNet {
 
     }
 
-    pub fn train(&mut self, input: Vec<DMatrix<f64>>, expected_output: Vec<DMatrix<f64>>, settings: &TSettings) -> Result<(), String> {
-        
-        //ensures that the matricies for the inputs and outputs are correct
-        for i in 0..input.len() {
-            if input[i].shape() != (1, self.shape[0]) {
-                return Err(format!("{}th input matrix doesn't have the expected shape. {:?} != {:?}", i, input[i].shape(), (1, self.shape[0])))
+    fn train_epoch(&mut self, data: &TData, settings: &TSettings) -> Result<f64, String>  {
+        let mut current_error = 0.0;
+        for i in 0..data.input.len() {
+
+            self.forward_propogate(data.input[i].clone()).unwrap();
+            let layer_delta = (self.cached_output() - data.output[i].clone()).transpose();
+
+            current_error += (layer_delta.clone().component_mul(&layer_delta)).sum();
+
+            //println!("\n{:?}\n", nn);
+            let mut weight_deltas = self.backward_propogate(layer_delta, settings.dropout).unwrap();
+            for i in 0..self.weights.len() {
+                self.weights[i] -= weight_deltas.pop().unwrap() * settings.alpha
             }
+        } 
+
+        Ok(current_error / data.input.len() as f64)
+    }
+
+    pub fn train(&mut self, training_data: TData, testing_data: Option<TData>, settings: &TSettings) -> Result<(), String> {
+        
+        //ensures that the matricies for the training_data.inputs and outputs are correct
+        if training_data.input[0].shape() != (1, self.shape[0]) {
+            return Err(format!("1st training_data.input matrix doesn't have the expected shape. {:?} != {:?}", training_data.input[0].shape(), (1, self.shape[0])))
         }
 
-        for i in 0..input.len() {
-            if expected_output[i].shape() != (1, *self.shape.last().unwrap()) {
-                return Err(format!("{}th output matrix doesn't have the expected shape. {:?} != {:?}", i, expected_output[i].shape(), (1, *self.shape.last().unwrap())))
+        for i in 0..training_data.output.len() {
+            if training_data.output[i].shape() != (1, *self.shape.last().unwrap()) {
+                return Err(format!("{}th output matrix doesn't have the expected shape. {:?} != {:?}", i, training_data.output[i].shape(), (1, *self.shape.last().unwrap())))
             }
         }
         
         let mut start = Instant::now();
 
         for iter_num in 0..(settings.iterations + 1) {
-
-            let mut current_error = 0.0;
-            for i in 0..input.len() {
-
-                self.forward_propogate(input[i].clone()).unwrap();
-                let layer_delta = (self.cached_output() - expected_output[i].clone()).transpose();
-
-                current_error += (layer_delta.clone().component_mul(&layer_delta)).sum();
-
-                //println!("\n{:?}\n", nn);
-                let mut weight_deltas = self.backward_propogate(layer_delta, settings.dropout).unwrap();
-                for i in 0..self.weights.len() {
-                    self.weights[i] -= weight_deltas.pop().unwrap() * settings.alpha
-                }
-            } 
+            let training_error = match self.train_epoch(&training_data, &settings) {
+                Ok(n) => n,
+                Err(e) => return Err(e)
+            };
 
             if settings.print_frequency != 0 {
-                if iter_num % (settings.iterations / settings.print_frequency) == 0 || iter_num == settings.iterations{
-                    println!("{}) Avg Error: {}\tTime Taken: {:?}", iter_num, current_error / (input.len() as f64), start.elapsed());
-                    start = Instant::now();
+                if iter_num % (settings.iterations / settings.print_frequency) == 0 || iter_num == settings.iterations {
+                    match testing_data {
+                        Some(_) => {
+                            let mut testing_error = 0.0;
+                            let data = testing_data.as_ref().unwrap();
+                            for i in 0..data.input.len() {
+                                let test_output = self.test(data.input[i].clone()).unwrap();
+                                let test_error = data.output[i].clone() - test_output;
+                                let test_error = test_error.component_mul(&test_error).sum();
+
+                                testing_error += test_error;
+                            }
+                            
+                            testing_error = testing_error / data.input.len() as f64;
+
+                            println!("{}) Training Error: {:.5}\tTesting Error: {:.5}\tTime Taken: {:?}", iter_num, training_error, testing_error, start.elapsed());
+                            start = Instant::now();
+                        },
+                        None => {
+                            println!("{}) Training Error: {:.5}\tTime Taken: {:?}", iter_num, training_error, start.elapsed());
+                            start = Instant::now();
+                        }
+                    }
+                    
                 }
             }
         }
@@ -184,32 +212,8 @@ impl NeuralNet {
     }
 }
 
-impl Debug for NeuralNet {
+impl Debug for MLP {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Neural Net: \nActivation Function: {:?}\nShape: {:?}\nOutput Cache: {:#?}\nWeights {:?}", self.act_func, self.shape, self.layer_output_cache.last().unwrap()[0], self.weights)
-    }
-}
-
-//training settings
-pub struct TSettings{
-    iterations: usize,
-    alpha: f64,
-    dropout: bool,
-    print_frequency: usize
-}
-
-impl TSettings {
-    pub fn new(iterations: usize, alpha: f64, dropout: bool, print_frequency: usize) -> Result<TSettings, String> {
-        if alpha < 1.0 && alpha > 0.0 {
-            Ok(TSettings {
-                iterations,
-                alpha,
-                dropout,
-                print_frequency
-            })
-        }
-        else {
-            Err("Alpha must be between 1 and 0".into())
-        }
     }
 }
