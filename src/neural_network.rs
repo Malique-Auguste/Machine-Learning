@@ -1,26 +1,28 @@
-pub mod mlp;
 pub mod act_func;
+pub mod mlp;
+pub mod cnn;
 
 use act_func::ActFunc;
-use nalgebra::DMatrix;
+use ndarray::Array2;
+
 
 pub trait NeuralNet: Sized {
     fn new(act_func: ActFunc, shape: Vec<usize>, rand_seed: u64) -> Result<Self, String>;
 
     fn train(&mut self, training_data: TData, testing_data: Option<TData>, settings: &TSettings) -> Result<(), String>;
 
-    fn test(&mut self, input: DMatrix<f64>) -> Result<&DMatrix<f64>, String>;
+    fn test(&mut self, input: Array2<f64>) -> Result<&Array2<f64>, String>;
 }
 
 
 #[derive( Clone)]
 pub struct TData {
-    input: Vec<DMatrix<f64>>,
-    output: Vec<DMatrix<f64>>
+    input: Vec<Array2<f64>>,
+    output: Vec<Array2<f64>>
 }
 
 impl TData {
-    pub fn new(input: Vec<DMatrix<f64>>, output: Vec<DMatrix<f64>>) -> Result<TData, String> {
+    pub fn new(input: Vec<Array2<f64>>, output: Vec<Array2<f64>>) -> Result<TData, String> {
         //ensures that the matricies for the inputs and outputs are correct
         for i in 0..input.len() {
             if input[i].shape() != input[0].shape() {

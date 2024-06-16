@@ -1,9 +1,9 @@
-use std::{fs::OpenOptions, io::Read};
+use std::{fmt::format, fs::OpenOptions, io::Read};
 
-use nalgebra::DMatrix;
+use ndarray::Array2;
 
 
-pub fn read_mnist(path: String) -> Result<(Vec<DMatrix<f64>>, Vec<DMatrix<f64>>), String> {
+pub fn read_mnist(path: String) -> Result<(Vec<Array2<f64>>, Vec<Array2<f64>>), String> {
     let mut mnist_data_file = match OpenOptions::new().read(true).open(path) {
         Ok(file) => file,
         Err(e) => return Err(format!("Error: {}", e))
@@ -26,9 +26,12 @@ pub fn read_mnist(path: String) -> Result<(Vec<DMatrix<f64>>, Vec<DMatrix<f64>>)
         }).collect::<Vec<f64>>()
     }).collect();
 
-    let output_template: DMatrix<f64> = DMatrix::from_vec(1, 10, vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+    let output_template: Array2<f64> = match Array2::from_shape_vec((1, 10), vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]) {
+        Ok(m) => m,
+        Err(e) => return Err(format!("Error in converting array {}", e))
+    };
 
-    let mnist_output_data: Vec<DMatrix<f64>> = mnist_input_data.iter_mut().map(|image_data| {
+    let mnist_output_data: Vec<Array2<f64>> = mnist_input_data.iter_mut().map(|image_data| {
         let output_num = image_data.remove(0) * 255.0;
         let mut output_matrix = output_template.clone();
         output_matrix[(0, output_num as usize)] = 1.0;
@@ -36,7 +39,7 @@ pub fn read_mnist(path: String) -> Result<(Vec<DMatrix<f64>>, Vec<DMatrix<f64>>)
         output_matrix
     }).collect();
     
-    let mnist_input_data: Vec<DMatrix<f64>> = mnist_input_data.into_iter().map(|image_data| DMatrix::from_vec(1, 28*28, image_data)).collect();
+    let mnist_input_data: Vec<Array2<f64>> = mnist_input_data.into_iter().map(|image_data| Array2::from_shape_vec((1, 28*28), image_data).unwrap()).collect();
     
     println!("Number of images: {}", mnist_input_data.len());
 

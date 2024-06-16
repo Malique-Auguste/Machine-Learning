@@ -1,50 +1,21 @@
 use super::act_func::ActFunc;
-use super::{TData, TSettings};
+use super::{TData, TSettings, NeuralNet};
 
-use std::time::{Duration, Instant};
+use std::time::{Instant};
 use std::fmt::Debug;
-use nalgebra::{iter, DMatrix};
+use ndarray::{ Array2, ArrayView, s};
 use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, SeedableRng};
 
 //Multilayer Perceptron
 pub struct MLP {
     act_func: ActFunc,
-    layer_output_cache: Vec<DMatrix<f64>>,
-    shape: Vec<usize>,
-    weights: Vec<DMatrix<f64>>,
+    layer_output_cache: Vec<Array2<f64>>,
+    shape: Vec<[usize;2]>,
+    weights: Vec<Array2<f64>>,
 }
 
 impl MLP {
-    pub fn new(act_func: ActFunc, shape: Vec<usize>, rand_seed: u64) -> Result<MLP, String> {
-        if shape.len() < 2 {
-            return Err("The size var must have at least 2 numbers which signify the number of inputs and outputs.".into());
-        }
-
-        let mut weights: Vec<DMatrix<f64>> = Vec::new();
-        
-        //Based on the provided shape of the network (# of neurons per layer), weights are generated at random with a uniform distribution betwee +-2
-        let mut rng = StdRng::seed_from_u64(rand_seed);
-        let range = Uniform::new(-1.0, 1.0);
-
-        for i in 1..shape.len() {
-            //Weights are matricies with a number of rows equal to the number of inputs + bias node, and number of columns equal to the number of outputs.
-            weights.push(
-                DMatrix::from_fn(shape[i-1] + 1, shape[i], |_, _| range.sample(&mut rng))
-            );
-        }
-        
-        Ok(MLP {
-            act_func,
-            layer_output_cache: vec![DMatrix::from_element(1, 1, 1.0)],
-            shape,
-            weights
-        })
-    }
-
-    pub fn forward_propogate(&mut self, input: DMatrix<f64>) -> Result<(), String> {
-        if input.shape() != (1, self.shape[0]) {
-            return Err(format!("Shape of input doesn't match expected. {:?} != (1, {})", input.shape(), self.shape[0]))
-        }
+    fn forward_propogate(&mut self, input: Array2<f64>) -> Result<(), String> {
 
         self.layer_output_cache = Vec::new();
         self.layer_output_cache.push(input);
@@ -52,19 +23,18 @@ impl MLP {
         for layer in self.weights.iter() {
 
             //extending input to include a bias node
-            let mut input: DMatrix<f64> = self.layer_output_cache.last().unwrap().clone();
-            let last_column_index = input.shape().1;
-            input = input.insert_column(last_column_index, 1.0);
+            let mut input: Array2<f64> = self.layer_output_cache.last().unwrap().clone();
+            input.push_column(ArrayView::from(&[1.0])).unwrap();
 
             self.layer_output_cache.push(
-                self.act_func.apply( input * layer)
+                self.act_func.apply( input.dot(layer))
             )
         }
 
         Ok(())
     }
 
-    pub fn backward_propogate(&mut self, mut layer_error: DMatrix<f64>,dropout: bool) -> Result<Vec<DMatrix<f64>>, String> {
+    pub fn backward_propogate(&mut self, mut layer_error: Array2<f64>,dropout: bool) -> Result<Vec<Array2<f64>>, String> {
         //layer_error = calculated output - expected output (after forwrd propogation)
         //dropout randomly turns off half the nodes on back propogation as to not overfit network to data
 
@@ -76,10 +46,10 @@ impl MLP {
 
         //Vector representing the error in the weights between layers
         //This vector is reversed. That is, the last set of weights in the network (which connects to the output layer) is first in this list
-        let mut weight_deltas: Vec<DMatrix<f64>> = Vec::new();
+        let mut weight_deltas: Vec<Array2<f64>> = Vec::new();
 
         //shows the input into the weights, or rather the output of the lyaer immediately before the weights
-        let mut weight_input: DMatrix<f64>;
+        let mut weight_input: Array2<f64>;
 
         //used for dropout
         let mut rng = StdRng::seed_from_u64(0);
@@ -90,13 +60,12 @@ impl MLP {
 
             //accointing for bias node
             weight_input = self.layer_output_cache[i].clone();
-            let last_column_index = weight_input.shape().1;
-            weight_input = weight_input.insert_column(last_column_index, 1.0);
+            weight_input.push_column(ArrayView::from(&[1.0])).unwrap();
 
             //dropout vector essentially randomly turns off half of the nodes to intorduce noise and avoid overfitting. thus multiply by 2
             if dropout {
-                let dropout_vector = DMatrix::from_fn(weight_input.shape().0, weight_input.shape().1, |_, _| range.sample(&mut rng) as i8 as f64);
-                weight_input = weight_input.component_mul(&dropout_vector) * 2.0;
+                let dropout_vector = Array2::from_shape_fn((weight_input.shape()[0], weight_input.shape()[1]) , |(_,_)| range.sample(&mut rng) as i8 as f64);
+                weight_input = weight_input * dropout_vector * 2.0;
             }
 
             //calculates the error for each layer depending on the function
@@ -108,9 +77,8 @@ impl MLP {
             layer_error = new_layer_error;
 
             //removes error associated with bias node as the bias node doesn't backpropogate, that is: it has nothing connecitng to it
-            let last_row_index = layer_error.shape().0 - 1;
-            layer_error = layer_error.remove_row(last_row_index);
-
+            let last_row_index = layer_error.shape()[0] - 1;
+            layer_error = layer_error.slice(s![0..last_row_index, 0..]).to_owned();
         }
 
         
@@ -123,31 +91,72 @@ impl MLP {
         for i in 0..data.input.len() {
 
             self.forward_propogate(data.input[i].clone()).unwrap();
-            let layer_delta = (self.cached_output() - data.output[i].clone()).transpose();
+            let layer_delta = (self.cached_output() - data.output[i].clone()).reversed_axes();
 
-            current_error += (layer_delta.clone().component_mul(&layer_delta)).sum();
+            current_error += (layer_delta.clone() * &layer_delta).sum();
 
             //println!("\n{:?}\n", nn);
             let mut weight_deltas = self.backward_propogate(layer_delta, settings.dropout).unwrap();
             for i in 0..self.weights.len() {
-                self.weights[i] -= weight_deltas.pop().unwrap() * settings.alpha
+                //-settings alpha so that this scaled dd turns into a scaled minus
+                self.weights[i].scaled_add(-settings.alpha, &weight_deltas.pop().unwrap());
             }
         } 
 
         Ok(current_error / data.input.len() as f64)
     }
 
-    pub fn train(&mut self, training_data: TData, testing_data: Option<TData>, settings: &TSettings) -> Result<(), String> {
+    pub fn cached_output(&self) -> &Array2<f64> {
+        self.layer_output_cache.last().unwrap()
+    }
+
+    pub fn get_shape(&self) -> &Vec<[usize; 2]> {
+        &self.shape
+    }
+
+    pub fn get_weights(&self) -> &Vec<Array2<f64>> {
+        &self.weights
+    }
+}
+
+impl NeuralNet for MLP {
+    fn new(act_func: ActFunc, mut shape: Vec<usize>, rand_seed: u64) -> Result<MLP, String> {
+        if shape.len() < 2 {
+            return Err("The size var must have at least 2 numbers which signify the number of inputs and outputs.".into());
+        }
+
+        let shape: Vec<[usize; 2]> = shape.iter().map(|x| [1, *x]).collect();
+
+        let mut weights: Vec<Array2<f64>> = Vec::new();
+        
+        //Based on the provided shape of the network (# of neurons per layer), weights are generated at random with a uniform distribution betwee +-2
+        let mut rng = StdRng::seed_from_u64(rand_seed);
+        let range = Uniform::new(-1.0, 1.0);
+
+        for i in 1..shape.len() {
+            //Weights are matricies with a number of rows equal to the number of inputs + bias node, and number of columns equal to the number of outputs.
+            weights.push(
+                Array2::from_shape_fn((shape[i-1][1] + 1, shape[i][1]), |(_, _)| range.sample(&mut rng))
+            );
+        }
+        
+        Ok(MLP {
+            act_func,
+            layer_output_cache: vec![],
+            shape,
+            weights
+        })
+    }
+
+    fn train(&mut self, training_data: TData, testing_data: Option<TData>, settings: &TSettings) -> Result<(), String> {
         
         //ensures that the matricies for the training_data.inputs and outputs are correct
-        if training_data.input[0].shape() != (1, self.shape[0]) {
+        if training_data.input[0].shape() != self.shape[0] {
             return Err(format!("1st training_data.input matrix doesn't have the expected shape. {:?} != {:?}", training_data.input[0].shape(), (1, self.shape[0])))
         }
 
-        for i in 0..training_data.output.len() {
-            if training_data.output[i].shape() != (1, *self.shape.last().unwrap()) {
-                return Err(format!("{}th output matrix doesn't have the expected shape. {:?} != {:?}", i, training_data.output[i].shape(), (1, *self.shape.last().unwrap())))
-            }
+        if training_data.output[0].shape() != self.shape.last().unwrap() {
+            return Err(format!("1st output matrix doesn't have the expected shape. {:?} != {:?}", training_data.output[0].shape(), self.shape.last().unwrap()))
         }
         
         let mut start = Instant::now();
@@ -167,7 +176,7 @@ impl MLP {
                             for i in 0..data.input.len() {
                                 let test_output = self.test(data.input[i].clone()).unwrap();
                                 let test_error = data.output[i].clone() - test_output;
-                                let test_error = test_error.component_mul(&test_error).sum();
+                                let test_error = (&test_error * &test_error).sum();
 
                                 testing_error += test_error;
                             }
@@ -190,7 +199,7 @@ impl MLP {
         Ok(())
     }
 
-    pub fn test(&mut self, input: DMatrix<f64>) -> Result<&DMatrix<f64>, String> {
+    fn test(&mut self, input: Array2<f64>) -> Result<&Array2<f64>, String> {
         match self.forward_propogate(input) {
             Ok(_) => (),
             Err(e) => return Err(e)
@@ -199,21 +208,11 @@ impl MLP {
         Ok(self.cached_output())
     }
 
-    pub fn cached_output(&self) -> &DMatrix<f64> {
-        self.layer_output_cache.last().unwrap()
-    }
 
-    pub fn get_shape(&self) -> &Vec<usize> {
-        &self.shape
-    }
-
-    pub fn get_weights(&self) -> &Vec<DMatrix<f64>> {
-        &self.weights
-    }
 }
 
 impl Debug for MLP {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Neural Net: \nActivation Function: {:?}\nShape: {:?}\nOutput Cache: {:#?}\nWeights {:?}", self.act_func, self.shape, self.layer_output_cache.last().unwrap()[0], self.weights)
+        write!(f, "Neural Net: \nActivation Function: {:?}\nShape: {:?}\nOutput Cache: {:#?}\nWeights {:?}", self.act_func, self.shape, self.layer_output_cache.last().unwrap(), self.weights)
     }
 }
