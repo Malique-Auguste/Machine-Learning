@@ -1,8 +1,6 @@
-Added random weights. When weights < 0, error shoots off to infinity
-Probably it jumps around so much because since there is only one set of data, there are so many ways to "solve" that
-because you aren't trying to find a solution for a trend, but simply trying to find how much ways you can get a specific output from 2 specific numbers
-
-For example, given 1 and 2, trying to get 3 we can have
-    1 + 2 = 3
-    5(1) - 2 = 3
-    -5(1) + 4(2) = 3
+Currently msint operates at 3.0secs per epoch
+6) Training Error: 0.55442      Testing Error: 0.66141  Time Taken: 17.8213377s
+12) Training Error: 0.41212     Testing Error: 0.53873  Time Taken: 17.8991051s
+18) Training Error: 0.34134     Testing Error: 0.48166  Time Taken: 18.1561223s
+24) Training Error: 0.29395     Testing Error: 0.44325  Time Taken: 18.1296778s
+30) Training Error: 0.25797     Testing Error: 0.41565  Time Taken: 18.1542011s

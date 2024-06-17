@@ -30,7 +30,7 @@ impl ActFunc {
         input
     }
 
-    pub fn delta(&self, layer_error: Array2<f64>, input: Array2<f64>, weights: Array2<f64>) -> (Array2<f64>, Array2<f64>) {
+    pub fn delta(&self, layer_error: Array2<f64>, input: Array2<f64>, weights: &Array2<f64>) -> (Array2<f64>, Array2<f64>) {
         //input must be a single row
         //weights are 2d with rows = numebr of input nodes, and columns = #output nodes
 
@@ -50,7 +50,7 @@ impl ActFunc {
             ActFunc::Sigmoid => {
                 // let s = sigmoid function
                 //ds = s(1-s)
-                let sigmoid_result: Array2<f64> = self.apply(input.dot(&weights));
+                let sigmoid_result: Array2<f64> = self.apply(input.dot(weights));
                 let mut sigmoid_derivative: Array2<f64> = sigmoid_result.clone() * -1.0;
                 sigmoid_derivative += 1.0;
                 sigmoid_derivative = sigmoid_result * &sigmoid_derivative;

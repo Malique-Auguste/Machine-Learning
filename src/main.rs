@@ -1,4 +1,4 @@
-use machine_learning::neural_network::{*, act_func::*, mlp::*};
+use machine_learning::neural_net::{*, act_func::*, training_helpers::*, net_shape::*};
 use machine_learning::dataset_handler::*;
 
 use ndarray::Array2;
@@ -6,7 +6,12 @@ use ndarray::Array2;
 fn main() {
     println!("Running...");
 
-    let mut nn = MLP::new(ActFunc::Sigmoid, vec![784, 40, 10], 2).unwrap();
+    let net_shape = NetShape::new(784, vec![40], 10, None).unwrap();
+
+
+    let mut nn = NeuralNet::new(ActFunc::Sigmoid, net_shape, 2).unwrap();
+
+    println!("a");
     
     let (mut input , mut expected_output) = read_mnist(".git/lfs/objects/fb/60/fb60bc58af4dac3554e394af262b3184479833d3cc540ff8783f274b73492d5d".into()).unwrap();
     let input: Vec<Array2<f64>> = input.drain(0..1000).collect();

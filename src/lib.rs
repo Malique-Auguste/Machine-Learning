@@ -1,11 +1,11 @@
-pub mod neural_network;
+pub mod neural_net;
 pub mod dataset_handler;
 
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use neural_network::{*, act_func::*, mlp::MLP};
+    use neural_net::{*, act_func::*, training_helpers::*, net_shape::*};
     use ndarray::{arr2, Array2, Shape};
 
     #[test]
@@ -24,7 +24,7 @@ mod tests {
     fn basic_net_2() {
         let net_shape = NetShape::new(2, vec![3], 1, None).unwrap();
 
-        let mut nn = MLP::new(ActFunc::ReLU, net_shape, 1).unwrap();
+        let mut nn = NeuralNet::new(ActFunc::ReLU, net_shape, 1).unwrap();
         let input: Vec<Array2<f64>> = vec![arr2(&[[1.0, -3.0]]),
                                             arr2(&[[3.0, 2.0]]),
                                             arr2(&[[-2.0, -4.5]]),
@@ -69,7 +69,7 @@ mod tests {
     fn basic_net_sig() {
         let net_shape = NetShape::new(2, vec![4], 1, None).unwrap();
 
-        let mut nn = MLP::new(ActFunc::Sigmoid, net_shape, 2).unwrap();
+        let mut nn = NeuralNet::new(ActFunc::Sigmoid, net_shape, 2).unwrap();
         let input: Vec<Array2<f64>> = vec![arr2(&[[2.0, 1.0]]),
                                             arr2(&[[3.0, -2.0]]),
                                             arr2(&[[-10.0, 5.5]]),
@@ -116,7 +116,7 @@ mod tests {
     fn xor() {
         let net_shape = NetShape::new(2, vec![3], 1, None).unwrap();
 
-        let mut nn = MLP::new(ActFunc::Sigmoid, net_shape, 2).unwrap();
+        let mut nn = NeuralNet::new(ActFunc::Sigmoid, net_shape, 2).unwrap();
         let input: Vec<Array2<f64>> = vec![arr2(&[[0.0, 0.0]]),
                                             arr2(&[[0.0, 1.0]]),
                                             arr2(&[[1.0, 0.0]]),
