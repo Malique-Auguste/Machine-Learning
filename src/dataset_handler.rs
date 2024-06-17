@@ -1,4 +1,4 @@
-use std::{fmt::format, fs::OpenOptions, io::Read};
+use std::{fs::OpenOptions, io::Read};
 
 use ndarray::Array2;
 

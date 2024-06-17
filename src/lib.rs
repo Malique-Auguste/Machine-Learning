@@ -6,7 +6,7 @@ pub mod dataset_handler;
 mod tests {
     use super::*;
     use neural_network::{*, act_func::*, mlp::MLP};
-    use ndarray::{Array2, arr2};
+    use ndarray::{arr2, Array2, Shape};
 
     #[test]
     fn matrix() {
@@ -22,7 +22,9 @@ mod tests {
 
     #[test]
     fn basic_net_2() {
-        let mut nn = MLP::new(ActFunc::ReLU, vec![2, 3, 1], 1).unwrap();
+        let net_shape = NetShape::new(2, vec![3], 1, None).unwrap();
+
+        let mut nn = MLP::new(ActFunc::ReLU, net_shape, 1).unwrap();
         let input: Vec<Array2<f64>> = vec![arr2(&[[1.0, -3.0]]),
                                             arr2(&[[3.0, 2.0]]),
                                             arr2(&[[-2.0, -4.5]]),
@@ -65,7 +67,9 @@ mod tests {
 
     #[test]
     fn basic_net_sig() {
-        let mut nn = MLP::new(ActFunc::Sigmoid, vec![2, 4, 1], 2).unwrap();
+        let net_shape = NetShape::new(2, vec![4], 1, None).unwrap();
+
+        let mut nn = MLP::new(ActFunc::Sigmoid, net_shape, 2).unwrap();
         let input: Vec<Array2<f64>> = vec![arr2(&[[2.0, 1.0]]),
                                             arr2(&[[3.0, -2.0]]),
                                             arr2(&[[-10.0, 5.5]]),
@@ -110,7 +114,9 @@ mod tests {
 
     #[test]
     fn xor() {
-        let mut nn = MLP::new(ActFunc::Sigmoid, vec![2, 3, 1], 3).unwrap();
+        let net_shape = NetShape::new(2, vec![3], 1, None).unwrap();
+
+        let mut nn = MLP::new(ActFunc::Sigmoid, net_shape, 2).unwrap();
         let input: Vec<Array2<f64>> = vec![arr2(&[[0.0, 0.0]]),
                                             arr2(&[[0.0, 1.0]]),
                                             arr2(&[[1.0, 0.0]]),
@@ -123,9 +129,10 @@ mod tests {
                                                     Array2::from_elem((1, 1), 0.0)];
 
         let training_data = TData::new(input.clone(), expected_output.clone()).unwrap();
-        let tsettings = TSettings::new(1000, 0.4, false, 15).unwrap();
+        let tsettings = TSettings::new(2000, 0.09, false, 10).unwrap();
 
         nn.train(training_data, None, &tsettings).unwrap();
+        println!("\n");
         
         for i in 0..input.len() {
             let output = nn.test(input[i].clone()).unwrap().sum();

@@ -1,7 +1,7 @@
 use super::act_func::ActFunc;
-use super::{TData, TSettings, NeuralNet};
+use super::{NetShape, NeuralNet, TData, TSettings};
 
-use std::time::{Instant};
+use std::time::Instant;
 use std::fmt::Debug;
 use ndarray::{ Array2, ArrayView, s};
 use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, SeedableRng};
@@ -10,7 +10,7 @@ use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, Seed
 pub struct MLP {
     act_func: ActFunc,
     layer_output_cache: Vec<Array2<f64>>,
-    shape: Vec<[usize;2]>,
+    shape: NetShape,
     weights: Vec<Array2<f64>>,
 }
 
@@ -110,7 +110,7 @@ impl MLP {
         self.layer_output_cache.last().unwrap()
     }
 
-    pub fn get_shape(&self) -> &Vec<[usize; 2]> {
+    pub fn get_shape(&self) -> &NetShape {
         &self.shape
     }
 
@@ -120,25 +120,40 @@ impl MLP {
 }
 
 impl NeuralNet for MLP {
-    fn new(act_func: ActFunc, mut shape: Vec<usize>, rand_seed: u64) -> Result<MLP, String> {
-        if shape.len() < 2 {
-            return Err("The size var must have at least 2 numbers which signify the number of inputs and outputs.".into());
-        }
-
-        let shape: Vec<[usize; 2]> = shape.iter().map(|x| [1, *x]).collect();
-
+    fn new(act_func: ActFunc, shape: NetShape, rand_seed: u64) -> Result<MLP, String> {
         let mut weights: Vec<Array2<f64>> = Vec::new();
         
         //Based on the provided shape of the network (# of neurons per layer), weights are generated at random with a uniform distribution betwee +-2
         let mut rng = StdRng::seed_from_u64(rand_seed);
         let range = Uniform::new(-1.0, 1.0);
 
-        for i in 1..shape.len() {
+        if shape.hidden_node_num.len() == 0 {
             //Weights are matricies with a number of rows equal to the number of inputs + bias node, and number of columns equal to the number of outputs.
             weights.push(
-                Array2::from_shape_fn((shape[i-1][1] + 1, shape[i][1]), |(_, _)| range.sample(&mut rng))
+                Array2::from_shape_fn((shape.input_node_num + 1, shape.output_node_num), |(_, _)| range.sample(&mut rng))
+            )
+        }
+
+        else {
+            //Creates weights between input layer and first hidden layer
+            weights.push(
+                Array2::from_shape_fn((shape.input_node_num + 1, shape.hidden_node_num[0]), |(_, _)| range.sample(&mut rng))
+            );
+
+            //creates weights between hidden layers
+            for i in 1..(shape.hidden_node_num.len() - 1) {
+                weights.push(
+                    Array2::from_shape_fn((shape.hidden_node_num[i] + 1, shape.hidden_node_num[i + 1]), |(_, _)| range.sample(&mut rng))
+                );
+            }
+
+            //creates weights between last hidden layer and output layer
+            weights.push(
+                Array2::from_shape_fn((shape.hidden_node_num.last().unwrap() + 1, shape.output_node_num), |(_, _)| range.sample(&mut rng))
             );
         }
+
+        
         
         Ok(MLP {
             act_func,
@@ -151,12 +166,12 @@ impl NeuralNet for MLP {
     fn train(&mut self, training_data: TData, testing_data: Option<TData>, settings: &TSettings) -> Result<(), String> {
         
         //ensures that the matricies for the training_data.inputs and outputs are correct
-        if training_data.input[0].shape() != self.shape[0] {
-            return Err(format!("1st training_data.input matrix doesn't have the expected shape. {:?} != {:?}", training_data.input[0].shape(), (1, self.shape[0])))
+        if training_data.input[0].shape()[1] != self.shape.input_node_num {
+            return Err(format!("1st training_data.input matrix doesn't have the expected shape. {:?} != {:?}", training_data.input[0].shape()[1], self.shape.input_node_num))
         }
 
-        if training_data.output[0].shape() != self.shape.last().unwrap() {
-            return Err(format!("1st output matrix doesn't have the expected shape. {:?} != {:?}", training_data.output[0].shape(), self.shape.last().unwrap()))
+        if training_data.output[0].shape()[1] != self.shape.output_node_num {
+            return Err(format!("1st output matrix doesn't have the expected shape. {:?} != {:?}", training_data.output[0].shape()[1], self.shape.output_node_num))
         }
         
         let mut start = Instant::now();

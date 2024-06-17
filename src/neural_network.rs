@@ -7,14 +7,58 @@ use ndarray::Array2;
 
 
 pub trait NeuralNet: Sized {
-    fn new(act_func: ActFunc, shape: Vec<usize>, rand_seed: u64) -> Result<Self, String>;
+    fn new(act_func: ActFunc, shape: NetShape, rand_seed: u64) -> Result<Self, String>;
 
     fn train(&mut self, training_data: TData, testing_data: Option<TData>, settings: &TSettings) -> Result<(), String>;
 
     fn test(&mut self, input: Array2<f64>) -> Result<&Array2<f64>, String>;
 }
 
+//Network Shape
+#[derive(Debug)]
+pub struct NetShape {
+    input_node_num: usize,
+    hidden_node_num: Vec<usize>,
+    output_node_num: usize,
+    
+    kernel_size: Option<usize>,
+}
 
+impl NetShape {
+    pub fn new(input_node_num: usize, hidden_node_num: Vec<usize>, output_node_num: usize, kernel_size: Option<usize>) -> Result<NetShape, String> {
+        if input_node_num == 0 {
+            return Err("Input node num must be greater than zero.".into());
+        }
+        else if output_node_num == 0 {
+            return Err("Output node num must be greater than zero.".into());
+        }
+        
+        Ok(NetShape {
+            input_node_num,
+            hidden_node_num,
+            output_node_num,
+            kernel_size,
+        })
+    }
+
+    pub fn input_node_num(&self) -> &usize {
+        &self.input_node_num
+    }
+
+    pub fn hidden_node_num(&self) -> &Vec<usize> {
+        &self.hidden_node_num
+    }
+
+    pub fn output_node_num(&self) -> &usize {
+        &self.output_node_num()
+    }
+
+    pub fn kernel_size(&self) -> &Option<usize> {
+        &self.kernel_size
+    }
+}
+
+//Training Data
 #[derive( Clone)]
 pub struct TData {
     input: Vec<Array2<f64>>,

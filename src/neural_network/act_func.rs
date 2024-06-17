@@ -1,6 +1,5 @@
-use nalgebra::{DMatrix, Vector};
 use ndarray::Array2;
-use std::{f64::consts::E};
+use std::f64::consts::E;
 
 
 //Activation Funciton
