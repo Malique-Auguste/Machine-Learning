@@ -4,6 +4,7 @@ pub mod net_shape;
 pub mod training_helpers;
 
 use act_func::ActFunc;
+use net_layer::{NetLayer, NetLayerType};
 use net_shape::NetShape;
 use training_helpers::{TData, TSettings};
 
@@ -17,35 +18,33 @@ pub struct NeuralNet {
     act_func: ActFunc,
     layer_output_cache: Vec<Array2<f64>>,
     shape: NetShape,
-    weights: Vec<Array2<f64>>,
+    layers: Vec<NetLayer>,
 }
 
 impl NeuralNet {
     pub fn new(act_func: ActFunc, shape: NetShape, rand_seed: u64) -> Result<NeuralNet, String> {
-        let mut weights: Vec<Array2<f64>> = Vec::new();
+        let mut layers: Vec<NetLayer> = Vec::new();
         
         //Based on the provided shape of the network (# of neurons per layer), weights are generated at random with a uniform distribution betwee +-2
         let mut rng = StdRng::seed_from_u64(rand_seed);
         let range = Uniform::new(-1.0, 1.0);
 
-        if shape.hidden_node_num().len() == 0 {
+        if shape.hidden_layers().len() == 0 {
             //Weights are matricies with a number of rows equal to the number of inputs + bias node, and number of columns equal to the number of outputs.
-            weights.push(
-                Array2::from_shape_fn((shape.input_node_num() + 1, *shape.output_node_num()), |(_, _)| range.sample(&mut rng))
+            layers.push(
+                match NetLayer::new(NetLayerType::new_dense_layer_type(shape.input_node_num(), shape.output_node_num()), rand_seed) {
+                    Ok(l) => l,
+                    Err(e) => return Err(format!("Error in creating layer from input nodes to output: {}", e))
+                }
             )
         }
 
         else {
-            //Creates weights between input layer and first hidden layer
-            weights.push(
-                Array2::from_shape_fn((shape.input_node_num() + 1, shape.hidden_node_num()[0]), |(_, _)| range.sample(&mut rng))
-            );
-
 
             //creates weights between hidden layers
-            for i in 1..(shape.hidden_node_num().len() - 1) {
-                weights.push(
-                    Array2::from_shape_fn((shape.hidden_node_num()[i] + 1, shape.hidden_node_num()[i + 1]), |(_, _)| range.sample(&mut rng))
+            for l in shape.layer_types().iter() {
+                layers.push(
+                    NetLayer::new(l, rand_seed)
                 );
 
             }
