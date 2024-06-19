@@ -1,15 +1,16 @@
+use std::fmt::Debug;
+
 use super::act_func::ActFunc;
 use ndarray::{s, Array2, ArrayView};
 use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, SeedableRng};
 
-#[derive(Debug)]
 pub struct NetLayer {
     layer_type: NetLayerType,
     weights: Array2<f64>,
 }
 
 impl NetLayer {
-    pub fn new(layer_type: NetLayerType, rand_seed: u64) -> Result<NetLayer, String> {
+    pub fn new(layer_type: NetLayerType, rng: &mut StdRng, range: &Uniform<f64>, rand_seed: u64) -> Result<NetLayer, String> {
         match layer_type {
             NetLayerType::DenseLayer{input_node_num, output_node_num} => {
                 if input_node_num == 0 {
@@ -19,13 +20,10 @@ impl NetLayer {
                     return Err(format!("Output node num cannot equal zero"))
                 }
         
-                let mut rng = StdRng::seed_from_u64(rand_seed);
-                let range = Uniform::new(-1.0, 1.0);
-        
                 Ok(NetLayer {
                     layer_type,
                     //+1 to account for bias node
-                    weights: Array2::from_shape_fn((input_node_num + 1, output_node_num), |(_,_)| range.sample(&mut rng)),
+                    weights: Array2::from_shape_fn((input_node_num + 1, output_node_num), |(_,_)| range.sample(rng)),
                 })
             },
 
@@ -101,6 +99,13 @@ impl NetLayer {
         }
     }
 }
+
+impl Debug for NetLayer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Layer Type: {:?}\nWeights {:?}", self.layer_type, self.weights)
+    }
+}
+
 
 #[derive(Debug)]
 pub enum NetLayerType {

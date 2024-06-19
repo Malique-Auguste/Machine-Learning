@@ -31,7 +31,7 @@ impl NeuralNet {
         //creates weights between hidden layers
         for l_type in shape.layer_types().drain(..) {
             layers.push(
-                match NetLayer::new(l_type, rand_seed) {
+                match NetLayer::new(l_type, &mut rng, &range, rand_seed) {
                     Ok(l) => l,
                     Err(e) => return Err(format!("Error in converting from layer type to layer: {}", e))
                 }
@@ -64,9 +64,9 @@ impl NeuralNet {
                 for i in 0..training_data.input().len() {
                     self.forward_propogate(training_data.input()[i].clone());
                     
-                    let layer_delta = (self.cached_output().unwrap() - training_data.output()[i].clone()).reversed_axes();
+                    let layer_delta = (self.cached_output().unwrap() - &training_data.output()[i]).reversed_axes();
 
-                    current_error += (layer_delta.clone() * &layer_delta).sum();
+                    current_error += (&layer_delta * &layer_delta).sum();
 
                     self.backward_propogate(layer_delta, settings)
                 } 
@@ -80,6 +80,7 @@ impl NeuralNet {
                         Some(_) => {
                             let mut testing_error = 0.0;
                             let data = testing_data.as_ref().unwrap();
+                            
                             for i in 0..data.input().len() {
                                 self.forward_propogate(data.input()[i].clone());
                                 let test_error = &data.output()[i] - self.cached_output().unwrap();
@@ -110,8 +111,6 @@ impl NeuralNet {
         self.cached_outputs = Vec::new();
         self.cached_outputs.push(input.clone());
 
-        self.cached_outputs.push(self.layers[0].forward_propogate(&self.act_func, input));
-
         for l_index in 0..self.layers.len() {
             self.cached_outputs.push(self.layers[l_index].forward_propogate(&self.act_func, self.cached_outputs[l_index].clone()));
         }
@@ -127,7 +126,6 @@ impl NeuralNet {
         self.layers[0].layer_type().input_node_num()
     }
 
-
     pub fn output_node_num(&self) -> usize {
         self.layers.last().unwrap().layer_type().output_node_num()
     }
@@ -139,6 +137,10 @@ impl NeuralNet {
 
 impl Debug for NeuralNet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Neural Net: \nActivation Function: {:?}\nLayers {:?}", self.act_func, self.layers)
+        let mut layers_string = String::new();
+        for layer in self.layers.iter() {
+            layers_string = format!("{}\n{:?}\n", layers_string, layer)
+        }
+        write!(f, "Neural Net: \nActivation Function: {:?}\nLayers:\n {}", self.act_func, layers_string)
     }
 }

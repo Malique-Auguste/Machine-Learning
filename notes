@@ -1,1 +1,14 @@
 Need to review code as to why it training error is improving but not test. See lib basic_net_2
+
+---- tests::basic_net_2 stdout ----
+0) Training Error: 58.53555     Testing Error: 0.57182  Time Taken: 782.6µs
+15) Training Error: 0.33015     Testing Error: 0.46159  Time Taken: 7.9473ms
+30) Training Error: 0.27895     Testing Error: 0.55378  Time Taken: 7.6239ms
+45) Training Error: 0.25264     Testing Error: 0.62647  Time Taken: 8.7036ms
+60) Training Error: 0.23626     Testing Error: 0.67348  Time Taken: 8.4298ms
+75) Training Error: 0.22502     Testing Error: 0.69952  Time Taken: 7.8987ms
+90) Training Error: 0.21680     Testing Error: 0.70919  Time Taken: 7.6406ms
+105) Training Error: 0.20451    Testing Error: 0.70538  Time Taken: 7.7454ms
+120) Training Error: 0.19501    Testing Error: 0.68569  Time Taken: 8.0543ms
+135) Training Error: 0.18830    Testing Error: 0.64153  Time Taken: 7.5693ms
+150) Training Error: 0.18383    Testing Error: 0.57888  Time Taken: 8.4351ms

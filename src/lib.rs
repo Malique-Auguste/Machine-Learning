@@ -26,6 +26,8 @@ mod tests {
                                                                 NetLayerType::DenseLayer { input_node_num: 2, output_node_num: 1 }]).unwrap();
 
         let mut nn = NeuralNet::new(ActFunc::ReLU, net_shape, 1).unwrap();
+        println!("\nNN:\n{:?}\n", nn);
+
         let input: Vec<Array2<f64>> = vec![arr2(&[[1.0, -3.0]]),
                                             arr2(&[[3.0, 2.0]]),
                                             arr2(&[[-2.0, -4.5]]),
@@ -106,7 +108,7 @@ mod tests {
 
         let training_data = TData::new(input, expected_output).unwrap();
         let testing_data = TData::new(test_input, test_output).unwrap();
-        let tsettings = TSettings::new(500, 0.4, false, 15).unwrap();
+        let tsettings = TSettings::new(350, 0.4, false, 10).unwrap();
 
 
 
