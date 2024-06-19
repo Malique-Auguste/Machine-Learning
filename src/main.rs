@@ -1,4 +1,4 @@
-use machine_learning::neural_net::{*, act_func::*, training_helpers::*, net_shape::*};
+use machine_learning::neural_net::{*, act_func::*, training_helpers::*, net_shape::*, net_layer::*};
 use machine_learning::dataset_handler::*;
 
 use ndarray::Array2;
@@ -6,7 +6,8 @@ use ndarray::Array2;
 fn main() {
     println!("Running...");
 
-    let net_shape = NetShape::new(784, vec![40], 10, None).unwrap();
+    let net_shape = NetShape::new(vec![NetLayerType::DenseLayer { input_node_num: 784, output_node_num: 40 }, 
+                                                                NetLayerType::DenseLayer { input_node_num: 40, output_node_num: 10 }]).unwrap();
 
 
     let mut nn = NeuralNet::new(ActFunc::Sigmoid, net_shape, 2).unwrap();
@@ -31,7 +32,8 @@ fn main() {
     
 
     for i in (0..test_input.len()).step_by(test_input.len() / 3) {
-        let output = nn.test(test_input[i].clone()).unwrap();
+        nn.forward_propogate(test_input[i].clone());
+        let output = nn.cached_output().unwrap();
         let error = output - test_output[i].clone();
         
         let error = (&error * &error).sum();

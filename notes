@@ -1,6 +1,1 @@
-Currently msint operates at 3.0secs per epoch
-6) Training Error: 0.55442      Testing Error: 0.66141  Time Taken: 17.8213377s
-12) Training Error: 0.41212     Testing Error: 0.53873  Time Taken: 17.8991051s
-18) Training Error: 0.34134     Testing Error: 0.48166  Time Taken: 18.1561223s
-24) Training Error: 0.29395     Testing Error: 0.44325  Time Taken: 18.1296778s
-30) Training Error: 0.25797     Testing Error: 0.41565  Time Taken: 18.1542011s
+Need to review code as to why it training error is improving but not test. See lib basic_net_2

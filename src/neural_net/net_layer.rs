@@ -1,11 +1,11 @@
 use super::act_func::ActFunc;
-use ndarray::{Array2, ArrayView};
+use ndarray::{s, Array2, ArrayView};
 use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, SeedableRng};
 
+#[derive(Debug)]
 pub struct NetLayer {
     layer_type: NetLayerType,
     weights: Array2<f64>,
-    output: Array2<f64>
 }
 
 impl NetLayer {
@@ -26,7 +26,6 @@ impl NetLayer {
                     layer_type,
                     //+1 to account for bias node
                     weights: Array2::from_shape_fn((input_node_num + 1, output_node_num), |(_,_)| range.sample(&mut rng)),
-                    output: Array2::from_elem((1, output_node_num), 0.0)
                 })
             },
 
@@ -43,25 +42,29 @@ impl NetLayer {
                     layer_type,
                     //Weights has number of rows equal to area of kernel and number of columns equal to number of kernels
                     weights: Array2::from_shape_fn((kernel_width * kernel_width, num_of_kernels), |(_,_)| range.sample(&mut rng)),
-                    output: Array2::from_elem((1, flattedned_output_length), 0.0)
                 })
             }
         }
     }
 
-    fn forward_propogate(&mut self, act_func: &ActFunc, input: &Array2<f64>) -> &Array2<f64> {
+    pub fn layer_type(&self) -> &NetLayerType {
+        &self.layer_type
+    }
+
+    pub fn forward_propogate(&mut self, act_func: &ActFunc, mut input: Array2<f64>) -> Array2<f64> {
         match self.layer_type {
             NetLayerType::DenseLayer {..} => {
-                self.output = act_func.apply(input.dot(&self.weights));
-                &self.output
+                input.push_column(ArrayView::from(&[1.0])).unwrap();
+                act_func.apply(input.dot(&self.weights))
             },
 
-            NetLayerType::ConvolutionalLayer { input_width, num_of_kernels, kernel_width , output_node_num} => {
+            NetLayerType::ConvolutionalLayer { .. } => {
                 unimplemented!()
             }
         }
     }
-    fn back_propogate(&mut self, act_func: &ActFunc, alpha: f64, dropout: bool, mut input: Array2<f64>, mut layer_error: Array2<f64>) -> Array2<f64> {
+
+    pub fn back_propogate(&mut self, act_func: &ActFunc, alpha: f64, dropout: bool, mut input: Array2<f64>, mut layer_error: Array2<f64>) -> Array2<f64> {
         match self.layer_type {
             NetLayerType::DenseLayer {..} => {
                 //Array representing the error in the weights
@@ -83,6 +86,10 @@ impl NetLayer {
 
                 //"-alpha" so that this scaled add turns into a scaled minus
                 self.weights.scaled_add(-alpha, &weight_deltas);
+                
+                //removes error associated with bias node as the bias node doesn't backpropogate, that is: it has nothing connecitng to it
+                let last_row_index = layer_error.shape()[0] - 1;
+                layer_error = layer_error.slice(s![0..last_row_index, 0..]).to_owned();
 
                 //layer_error of input layer
                 layer_error
@@ -110,10 +117,6 @@ pub enum NetLayerType {
 }
 
 impl NetLayerType {
-    pub fn new_dense_layer_type(input_node_num: usize, output_node_num: usize ) -> NetLayerType {
-        NetLayerType::DenseLayer { input_node_num, output_node_num }
-    }
-
     pub fn input_node_num(&self) -> usize {
         match self {
             NetLayerType::ConvolutionalLayer { input_width, .. } => {

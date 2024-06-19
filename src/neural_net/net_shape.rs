@@ -26,7 +26,7 @@ impl NetShape {
         })
     }
 
-    pub fn layer_types(&self) -> &Vec<NetLayerType> {
-        &self.layer_types
+    pub fn layer_types(self) -> Vec<NetLayerType> {
+        self.layer_types
     }
 }
