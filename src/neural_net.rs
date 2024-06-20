@@ -31,7 +31,7 @@ impl NeuralNet {
         //creates weights between hidden layers
         for l_type in shape.layer_types().drain(..) {
             layers.push(
-                match NetLayer::new(l_type, &mut rng, &range, rand_seed) {
+                match NetLayer::new(l_type, &mut rng, &range) {
                     Ok(l) => l,
                     Err(e) => return Err(format!("Error in converting from layer type to layer: {}", e))
                 }
