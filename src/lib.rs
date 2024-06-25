@@ -141,7 +141,7 @@ mod tests {
         
         for i in 0..input.len() {
             nn.forward_propogate(input[i].clone());
-            let output = nn.cached_output().unwrap()[(0,0)];
+            let output = nn.cached_output()[(0,0)];
             let delta = output - expected_output[i][(0,0)];
 
             println!("Output: {}, Delta: {}, Err: {}", output, delta, delta * delta)

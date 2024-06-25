@@ -8,6 +8,7 @@ use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, Seed
 pub struct NetLayer {
     layer_type: NetLayerType,
     weights: Array2<f64>,
+    output: Array2<f64>,
 }
 
 impl NetLayer {
@@ -25,6 +26,7 @@ impl NetLayer {
                     layer_type,
                     //+1 to account for bias node
                     weights: Array2::from_shape_fn((input_node_num + 1, output_node_num), |(_,_)| range.sample(rng)),
+                    output: Array2::from_elem((1, output_node_num), 0.0)
                 })
             },
 
@@ -32,11 +34,15 @@ impl NetLayer {
                 if kernel_width >= input_width as usize {
                     return  Err(format!("Kernal width ({}) must be less than input_width ({}).", kernel_width, input_width ));
                 }
+
+                let feature_map_width = input_width + 1 - kernel_width;
+
         
                 Ok(NetLayer {
                     layer_type,
                     //Weights has number of rows equal to area of kernel and number of columns equal to number of kernels
                     weights: Array2::from_shape_fn((kernel_width * kernel_width, num_of_kernels), |(_,_)| range.sample(rng)),
+                    output: Array2::from_elem((1, feature_map_width * feature_map_width), 0.0)
                 })
             }
         }
@@ -46,11 +52,11 @@ impl NetLayer {
         &self.layer_type
     }
 
-    pub fn forward_propogate(&mut self, act_func: &ActFunc, mut input: Array2<f64>) -> Array2<f64> {
+    pub fn forward_propogate(&mut self, act_func: &ActFunc, mut input: Array2<f64>) {
         match self.layer_type {
             NetLayerType::DenseLayer {..} => {
                 input.push_column(ArrayView::from(&[1.0])).unwrap();
-                act_func.apply(input.dot(&self.weights))
+                self.output = act_func.apply(input.dot(&self.weights))
             },
 
             NetLayerType::ConvolutionalLayer { kernel_width, input_width, num_of_kernels, .. } => {
@@ -72,18 +78,20 @@ impl NetLayer {
                         let square_kernel_input = input.slice(s![r..(r + kernel_width), c..(c + kernel_width)]);
                         let flat_kernel_input = square_kernel_input.into_shape([1, kernel_width * kernel_width]).unwrap();
 
-                        //puts the feature map into the temp output. Feature maps lie on one column and across the depth of the temp output
+                        //puts the feature map into the temp output. Feature maps lie on the row x column face of temp output. 
+                        //Because the weights represent the output at one point for each kernel, the feature map slice is place in a single column and across the depth of tem_output
                         let feature_map_slice = act_func.apply(flat_kernel_input.dot(&self.weights));
                         let mut temp_output_slice = temp_output.slice_mut(s![.., r, c]);
                         temp_output_slice.assign(&feature_map_slice)
                     }
                 }
 
+                /*
                 let pooled_feature_map_width = (feature_map_width / 2) + (feature_map_width % 2);
                 let mut pooled_temp_output = Array3::from_elem([num_of_kernels, pooled_feature_map_width, pooled_feature_map_width], 0.0);
                 let step: usize = 2;
 
-                //for each square of data in output, the max value is saved
+                //for each 2x2 square of data in a feature map int he output, the max value is saved
                 for d in 0..num_of_kernels {
 
                     let mut pooled_r_index = 0;
@@ -113,6 +121,11 @@ impl NetLayer {
 
                 let flattened_pooled_output = pooled_temp_output.into_shape((1, num_of_kernels * pooled_feature_map_width * pooled_feature_map_width)).unwrap();
                 flattened_pooled_output
+                */
+
+                let flattened_output: Array2<f64> = temp_output.into_shape((1, num_of_kernels * feature_map_width * feature_map_width)).unwrap();
+
+                self.output = flattened_output
             }
         }
     }
@@ -149,9 +162,17 @@ impl NetLayer {
             },
 
             NetLayerType::ConvolutionalLayer { input_width, num_of_kernels, kernel_width , output_node_num} => {
+                let feature_map_width = input_width + 1 - kernel_width;
+                //let square_output: Array3<f64> = temp_output.into_shape((num_of_kernels, feature_map_width, feature_map_width)).unwrap();
+
+
                 unimplemented!()
             }
         }
+    }
+
+    pub fn output(&self) -> &Array2<f64> {
+        &self.output
     }
 }
 
