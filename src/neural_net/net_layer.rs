@@ -162,11 +162,52 @@ impl NetLayer {
             },
 
             NetLayerType::ConvolutionalLayer { input_width, num_of_kernels, kernel_width , output_node_num} => {
+                let square_input: Array2<f64> = self.output.clone().into_shape((input_width, input_width)).unwrap();
+                
                 let feature_map_width = input_width + 1 - kernel_width;
-                //let square_output: Array3<f64> = temp_output.into_shape((num_of_kernels, feature_map_width, feature_map_width)).unwrap();
+                let cubed_layer_error: Array3<f64> = layer_error.into_shape((num_of_kernels, feature_map_width, feature_map_width)).unwrap();
 
+                for k in 0..num_of_kernels {
+                    let mut weight_index = 0;
 
-                unimplemented!()
+                    for r in 0..kernel_width {
+                        for c in 0..kernel_width {
+                            //Gets input equal in dimensions to the output error, and multipies them.
+                            let square_input_slice = square_input.slice(s![r..(r + feature_map_width), c..(c + feature_map_width)]);
+                            let flattened_input_slice = square_input_slice.into_shape((1, feature_map_width * feature_map_width)).unwrap();
+
+                            let feature_map_error = cubed_layer_error.slice(s![k, .., ..]);
+                            let flattened_feature_map_error = feature_map_error.into_shape((feature_map_width * feature_map_width, 1)).unwrap();
+
+                            self.weights[(weight_index, k)] += flattened_input_slice.dot(&flattened_feature_map_error).sum() * alpha;
+
+                            weight_index += 1;
+                        }
+                    }
+                }
+
+                let mut input_layer_error = Array2::from_elem((input_width, input_width), 0.0);
+
+                for k in 0..num_of_kernels {
+                    let mut weight_index = 0;
+
+                    for r in 0..kernel_width {
+                        for c in 0..kernel_width {
+                            let feature_map_error = cubed_layer_error.slice(s![k, .., ..]);
+                            let partial_input_error = feature_map_error.to_owned() * self.weights[(weight_index, k)];
+
+                            for f_row in 0..feature_map_width {
+                                for f_col in 0..feature_map_width {
+                                    input_layer_error[(r + f_row, c + f_col)] += partial_input_error[(f_row, f_col)];
+                                }
+                            }
+
+                            weight_index += 1;
+                        }
+                    }
+                }               
+
+                input_layer_error.into_shape((1, input_width * input_width)).unwrap()
             }
         }
     }
