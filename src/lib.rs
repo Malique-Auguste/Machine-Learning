@@ -165,7 +165,7 @@ mod tests {
         let (mut input , mut expected_output) = read_mnist(".git/lfs/objects/fb/60/fb60bc58af4dac3554e394af262b3184479833d3cc540ff8783f274b73492d5d".into()).unwrap();
         let input: Vec<Array2<f64>> = input.drain(0..1000).collect();
         let expected_output: Vec<Array2<f64>> = expected_output.drain(0..1000).collect();
-        let training_data = TData::new(input, expected_output).unwrap();
+        let training_data = TData::new(input.clone(), expected_output.clone()).unwrap();
 
 
         let (mut test_input, mut test_output) = read_mnist(".git/lfs/objects/51/c2/51c292478d94ec3a01461bdfa82eb0885d262eb09e615679b2d69dedb6ad09e7".into()).unwrap();
@@ -179,14 +179,14 @@ mod tests {
 
         
 
-        for i in (0..test_input.len()).step_by(test_input.len() / 3) {
-            nn.forward_propogate(test_input[i].clone());
-            let output = nn.cached_output().unwrap();
-            let error = output - test_output[i].clone();
+        for i in (0..input.len()).step_by(input.len() / 3) {
+            nn.forward_propogate(input[i].clone());
+            let output = nn.cached_output();
+            let error = output - expected_output[i].clone();
             
             let error = (&error * &error).sum();
 
-            println!("\nExpected: {:?}\nCalculated: {:?}\nError: {}", test_output[i], output, error);
+            println!("\nExpected: {:?}\nCalculated: {:?}\nError: {}", expected_output[i], output, error);
             
         }
     }

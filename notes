@@ -1,14 +1,57 @@
-Need to review code as to why it training error is improving but not test. See lib basic_net_2
+currently taking 20s
+8s
 
----- tests::basic_net_2 stdout ----
-0) Training Error: 58.53555     Testing Error: 0.57182  Time Taken: 782.6µs
-15) Training Error: 0.33015     Testing Error: 0.46159  Time Taken: 7.9473ms
-30) Training Error: 0.27895     Testing Error: 0.55378  Time Taken: 7.6239ms
-45) Training Error: 0.25264     Testing Error: 0.62647  Time Taken: 8.7036ms
-60) Training Error: 0.23626     Testing Error: 0.67348  Time Taken: 8.4298ms
-75) Training Error: 0.22502     Testing Error: 0.69952  Time Taken: 7.8987ms
-90) Training Error: 0.21680     Testing Error: 0.70919  Time Taken: 7.6406ms
-105) Training Error: 0.20451    Testing Error: 0.70538  Time Taken: 7.7454ms
-120) Training Error: 0.19501    Testing Error: 0.68569  Time Taken: 8.0543ms
-135) Training Error: 0.18830    Testing Error: 0.64153  Time Taken: 7.5693ms
-150) Training Error: 0.18383    Testing Error: 0.57888  Time Taken: 8.4351ms
+with alpha = 0.005
+0) Training Error: 2.71673      Testing Error: 2.66937  Time Taken: 8.2117521s
+8) Training Error: 1.71311      Testing Error: 1.70616  Time Taken: 63.7953287s
+16) Training Error: 1.71407     Testing Error: 1.70947  Time Taken: 68.1211757s
+24) Training Error: 1.69533     Testing Error: 1.68143  Time Taken: 78.2890008s
+32) Training Error: 1.67840     Testing Error: 1.67618  Time Taken: 75.9512829s
+40) Training Error: 1.66735     Testing Error: 1.66505  Time Taken: 76.7519986s
+48) Training Error: 1.66228     Testing Error: 1.65934  Time Taken: 74.3793223s
+56) Training Error: 1.65255     Testing Error: 1.65529  Time Taken: 81.2134206s
+64) Training Error: 1.64397     Testing Error: 1.64891  Time Taken: 79.8138056s
+72) Training Error: 1.63924     Testing Error: 1.64119  Time Taken: 79.8899063s
+80) Training Error: 1.63868     Testing Error: 1.62706  Time Taken: 79.7897024s
+88) Training Error: 1.63597     Testing Error: 1.62275  Time Taken: 80.8367177s
+96) Training Error: 1.63544     Testing Error: 1.64404  Time Taken: 75.4056847s
+
+with alpha = 0.05
+0) Training Error: 1.95499      Testing Error: 1.74012  Time Taken: 8.2359248s
+6) Training Error: 1.70232      Testing Error: 1.67900  Time Taken: 48.7985258s
+12) Training Error: 1.68056     Testing Error: 1.67218  Time Taken: 51.3166307s
+18) Training Error: 0.93845     Testing Error: 0.94801  Time Taken: 49.8053628s
+24) Training Error: 0.93717     Testing Error: 0.94964  Time Taken: 49.8923048s
+30) Training Error: 0.91098     Testing Error: 0.90720  Time Taken: 49.5779113s
+36) Training Error: 0.86643     Testing Error: 0.92275  Time Taken: 49.3498776s
+42) Training Error: 0.85206     Testing Error: 0.94753  Time Taken: 49.3290475s
+48) Training Error: 0.84705     Testing Error: 0.87775  Time Taken: 49.3981561s
+54) Training Error: 0.84393     Testing Error: 0.95398  Time Taken: 49.3610079s
+60) Training Error: 0.83492     Testing Error: 0.85252  Time Taken: 49.2762301s
+66) Training Error: 0.83372     Testing Error: 0.84661  Time Taken: 49.4031831s
+72) Training Error: 0.82944     Testing Error: 0.84298  Time Taken: 49.4870793s
+78) Training Error: 0.83290     Testing Error: 0.84155  Time Taken: 49.6901267s
+84) Training Error: 0.82647     Testing Error: 0.88267  Time Taken: 49.7031959s
+90) Training Error: 0.82781     Testing Error: 0.84017  Time Taken: 49.3319864s
+96) Training Error: 0.82308     Testing Error: 0.84396  Time Taken: 49.358205s
+
+
+Changed alpha to neg
+0) Training Error: 1.09104      Testing Error: 0.99169  Time Taken: 8.3414793s
+6) Training Error: 0.98173      Testing Error: 0.99047  Time Taken: 48.329185s
+12) Training Error: 0.95679     Testing Error: 0.93499  Time Taken: 51.1015257s
+18) Training Error: 0.86608     Testing Error: 0.83523  Time Taken: 48.8982103s
+24) Training Error: 0.76853     Testing Error: 0.73293  Time Taken: 48.8808045s
+30) Training Error: 0.71846     Testing Error: 0.72445  Time Taken: 49.1316095s
+36) Training Error: 0.70047     Testing Error: 0.72465  Time Taken: 49.672514s
+42) Training Error: 0.68948     Testing Error: 0.71765  Time Taken: 49.8089494s
+48) Training Error: 0.68198     Testing Error: 0.72017  Time Taken: 49.1765245s
+54) Training Error: 0.68522     Testing Error: 0.73574  Time Taken: 49.113234s
+60) Training Error: 0.67374     Testing Error: 0.72941  Time Taken: 49.9899509s
+66) Training Error: 0.61187     Testing Error: 0.68038  Time Taken: 49.3725628s
+72) Training Error: 0.59437     Testing Error: 0.67993  Time Taken: 49.8025091s
+78) Training Error: 0.58344     Testing Error: 0.65700  Time Taken: 50.2228884s
+84) Training Error: 0.57357     Testing Error: 0.64055  Time Taken: 49.5886646s
+90) Training Error: 0.57640     Testing Error: 0.63956  Time Taken: 49.6174425s
+96) Training Error: 0.56868     Testing Error: 0.63556  Time Taken: 49.6999851s
+300) Training Error: 0.16799    Testing Error: 0.45228  Time Taken: 51.0792264s

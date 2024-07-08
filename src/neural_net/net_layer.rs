@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use super::act_func::ActFunc;
-use ndarray::{s, Array2, Array3, ArrayView};
+use ndarray::{s, Array2, Array3, ArrayView, Axis};
 use ndarray_stats::QuantileExt;
 use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, SeedableRng};
 
@@ -68,26 +68,28 @@ impl NetLayer {
 
                 //shape follows convention of [depth, rows, columns]
                 //therefore temp output is such that each layer reprent a new feature map
-                let mut temp_output = Array3::from_elem([num_of_kernels, feature_map_width, feature_map_width], 0.0);
+                let mut kernel_input: Array2<f64> = Array2::from_elem((1, kernel_width * kernel_width), 0.0);
 
                 //row
                 for r in 0..feature_map_width {
 
                     //column
                     for c in 0..feature_map_width {
-                        let square_kernel_input = input.slice(s![r..(r + kernel_width), c..(c + kernel_width)]).to_owned();
-                        //println!("{:?}, {:?}", square_kernel_input.shape(), [1, kernel_width * kernel_width]);
-                        let flat_kernel_input = square_kernel_input.into_shape([1, kernel_width * kernel_width]).unwrap();
+                        let square_kernel_input_segment = input.slice(s![r..(r + kernel_width), c..(c + kernel_width)]).to_owned();
+                        let flat_kernel_input_segment = square_kernel_input_segment.into_shape([1, kernel_width * kernel_width]).unwrap();
 
+                        if r == 0 && c == 0 {
+                            kernel_input = flat_kernel_input_segment
+                        }
+                        else {
+                            kernel_input.append(Axis(0), flat_kernel_input_segment.view()).unwrap()
+                        }
 
-                        //puts the feature map into the temp output. Feature maps lie on the row x column face of temp output. 
-                        //Because the weights represent the output at one point for each kernel, the feature map slice is place in a single column and across the depth of tem_output
-                        let feature_map_slice = act_func.apply(flat_kernel_input.dot(&self.weights)).into_shape([4]).unwrap();
-                        let mut temp_output_slice = temp_output.slice_mut(s![.., r, c]);
-                        //println!("{:?}, {:?}", feature_map_slice.shape(), temp_output_slice.shape());
-                        temp_output_slice.assign(&feature_map_slice)
                     }
                 }
+
+                let output = act_func.apply(kernel_input.dot(&self.weights));
+                self.output = output.reversed_axes().into_shape((1, feature_map_width * feature_map_width * num_of_kernels)).unwrap();
 
                 /*
                 let pooled_feature_map_width = (feature_map_width / 2) + (feature_map_width % 2);
@@ -125,10 +127,7 @@ impl NetLayer {
                 let flattened_pooled_output = pooled_temp_output.into_shape((1, num_of_kernels * pooled_feature_map_width * pooled_feature_map_width)).unwrap();
                 self.output = flattened_pooled_output;
                 
-                */
-                let flattened_output: Array2<f64> = temp_output.into_shape((1, num_of_kernels * feature_map_width * feature_map_width)).unwrap();
-                self.output = flattened_output
-                
+                */                
             }
         }
     }
@@ -168,26 +167,31 @@ impl NetLayer {
                 let square_input: Array2<f64> = input.into_shape((input_width, input_width)).unwrap();
                 
                 let feature_map_width = input_width + 1 - kernel_width;
-                let cubed_layer_error: Array3<f64> = layer_error.into_shape((num_of_kernels, feature_map_width, feature_map_width)).unwrap();
+                let square_layer_error: Array2<f64> = layer_error.into_shape((feature_map_width * feature_map_width, num_of_kernels)).unwrap();
 
-                for k in 0..num_of_kernels {
-                    let mut weight_index = 0;
+                let mut input_collection: Array2<f64> = Array2::from_elem((1, kernel_width * kernel_width), 0.0);
 
-                    for r in 0..kernel_width {
-                        for c in 0..kernel_width {
-                            //Gets input equal in dimensions to the output error, and multipies them.
-                            let square_input_slice = square_input.slice(s![r..(r + feature_map_width), c..(c + feature_map_width)]).to_owned();
-                            let flattened_input_slice = square_input_slice.into_shape((1, feature_map_width * feature_map_width)).unwrap();
+                //row
+                for r in 0..kernel_width {
 
-                            let feature_map_error = cubed_layer_error.slice(s![k, .., ..]);
-                            let flattened_feature_map_error = feature_map_error.into_shape((feature_map_width * feature_map_width, 1)).unwrap();
+                    //column
+                    for c in 0..kernel_width {
+                        let square_input_segment = square_input.slice(s![r..(r + feature_map_width), c..(c + feature_map_width)]).to_owned();
+                        let flat_input_segment = square_input_segment.into_shape([1, feature_map_width * feature_map_width]).unwrap();
 
-                            self.weights[(weight_index, k)] += flattened_input_slice.dot(&flattened_feature_map_error).sum() * alpha;
-
-                            weight_index += 1;
+                        if r == 0 && c == 0 {
+                            input_collection = flat_input_segment
+                        }
+                        else {
+                            input_collection.append(Axis(0), flat_input_segment.view()).unwrap()
                         }
                     }
                 }
+
+                let weight_delta = input_collection.dot(&square_layer_error);
+
+                //"-alpha" so that this scaled add turns into a scaled minus
+                self.weights.scaled_add(-alpha, &weight_delta);
 
                 let mut input_layer_error = Array2::from_elem((input_width, input_width), 0.0);
 
