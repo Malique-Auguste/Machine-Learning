@@ -6,8 +6,8 @@ use ndarray::Array2;
 fn main() {
     println!("Running...");
 
-    let net_shape = NetShape::new(vec![NetLayerType::DenseLayer { input_node_num: 784, output_node_num: 40 }, 
-                                                                NetLayerType::DenseLayer { input_node_num: 40, output_node_num: 10 }]).unwrap();
+    let net_shape = NetShape::new(vec![NetLayerType::ConvolutionalLayer { input_width: 28, num_of_kernels: 4, kernel_width: 3, output_node_num: 676 }, 
+                                                                NetLayerType::DenseLayer { input_node_num: 676, output_node_num: 10 }]).unwrap();
 
 
     let mut nn = NeuralNet::new(ActFunc::Sigmoid, net_shape, 2).unwrap();
@@ -26,14 +26,14 @@ fn main() {
     let testing_data = TData::new(test_input.clone(), test_output.clone()).unwrap();
 
 
-    let tsettings = TSettings::new(100, 0.005, false, 15).unwrap();
+    let tsettings = TSettings::new(100, 0.005, false, 50).unwrap();
     nn.train(training_data, Some(testing_data), &tsettings).unwrap();
 
     
 
     for i in (0..test_input.len()).step_by(test_input.len() / 3) {
         nn.forward_propogate(test_input[i].clone());
-        let output = nn.cached_output().unwrap();
+        let output = nn.cached_output();
         let error = output - test_output[i].clone();
         
         let error = (&error * &error).sum();
