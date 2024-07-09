@@ -1,7 +1,7 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, process::Output};
 
 use super::act_func::ActFunc;
-use ndarray::{s, Array2, Array3, ArrayView, Axis};
+use ndarray::{s, Array, Array2, Array3, ArrayView, Axis, linalg::kron};
 use ndarray_stats::QuantileExt;
 use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, SeedableRng};
 
@@ -30,19 +30,31 @@ impl NetLayer {
                 })
             },
 
-            NetLayerType::ConvolutionalLayer { input_width, num_of_kernels, kernel_width , ..} => {
+            NetLayerType::PrimaryConvolutionalLayer { input_width, kernel_num, kernel_width, pool_step , ..} => {
                 if kernel_width >= input_width as usize {
                     return  Err(format!("Kernal width ({}) must be less than input_width ({}).", kernel_width, input_width ));
                 }
 
                 let feature_map_width = input_width + 1 - kernel_width;
-
+                let pooled_feature_map_width: usize = feature_map_width / pool_step;
         
                 Ok(NetLayer {
                     layer_type,
                     //Weights has number of rows equal to area of kernel and number of columns equal to number of kernels
-                    weights: Array2::from_shape_fn((kernel_width * kernel_width, num_of_kernels), |(_,_)| range.sample(rng)),
-                    output: Array2::from_elem((1, feature_map_width * feature_map_width), 0.0)
+                    weights: Array2::from_shape_fn((kernel_width.pow(2), kernel_num), |(_,_)| range.sample(rng)),
+                    output: Array2::from_elem((1, pooled_feature_map_width.pow(2) * kernel_num), 0.0)
+                })
+            },
+
+            NetLayerType::SecondaryConvolutionalLayer { input_feature_map_width, input_feature_map_num, kernel_num, kernel_width, pool_step, ..} => {
+                let feature_map_width = input_feature_map_width + 1 - kernel_width;
+                let pooled_feature_map_width: usize = feature_map_width / pool_step;
+
+                Ok(NetLayer {
+                    layer_type,
+
+                    weights: Array2::from_shape_fn((input_feature_map_num * kernel_width.pow(2), kernel_num), |(_,_)| range.sample(rng)),
+                    output: Array2::from_elem((1, pooled_feature_map_width.pow(2) * input_feature_map_num * kernel_num), 0.0)
                 })
             }
         }
@@ -59,7 +71,7 @@ impl NetLayer {
                 self.output = act_func.apply(input.dot(&self.weights))
             },
 
-            NetLayerType::ConvolutionalLayer { kernel_width, input_width, num_of_kernels, .. } => {
+            NetLayerType::PrimaryConvolutionalLayer { kernel_width, input_width, kernel_num, pool_step, .. } => {
                 //converts flattened input into a square which kernels can traverse
                 input = input.into_shape([input_width, input_width]).unwrap();
 
@@ -88,46 +100,100 @@ impl NetLayer {
                     }
                 }
 
-                let output = act_func.apply(kernel_input.dot(&self.weights));
-                self.output = output.reversed_axes().into_shape((1, feature_map_width * feature_map_width * num_of_kernels)).unwrap();
+                let output: Array2<f64> = act_func.apply(kernel_input.dot(&self.weights)).reversed_axes();
+                //self.output = output.reversed_axes().into_shape((1, feature_map_width * feature_map_width * num_of_kernels)).unwrap();
 
-                /*
-                let pooled_feature_map_width = (feature_map_width / 2) + (feature_map_width % 2);
-                let mut pooled_temp_output = Array3::from_elem([num_of_kernels, pooled_feature_map_width, pooled_feature_map_width], 0.0);
-                let step: usize = 2;
 
-                //for each 2x2 square of data in a feature map int he output, the max value is saved
-                for d in 0..num_of_kernels {
+                let pooled_feature_map_width: usize = feature_map_width / pool_step;
 
-                    let mut pooled_r_index = 0;
-                    for r_index in (0..feature_map_width).step_by(step) {
+                //each column is a new feature map.
+                let cubed_output = output.into_shape((kernel_num, feature_map_width, feature_map_width)).unwrap();
+                let mut vec_output = Vec::new();
 
-                        // if row range is ever greater than the feature map width, it is limited
-                        let mut row_range = r_index..(r_index + step);
-                        if r_index + step > feature_map_width {
-                            row_range = r_index..feature_map_width
-                        }
-
-                        let mut pooled_c_index = 0;
-                        for c_index in (0..feature_map_width).step_by(step) {
-                            let mut column_range = c_index..(c_index + step);
-                            if c_index + step > feature_map_width {
-                                column_range = c_index..feature_map_width
-                            }
-
-                            pooled_temp_output[(d, pooled_r_index, pooled_c_index)] = *temp_output.slice(s![d, row_range.clone(), column_range.clone()]).max().unwrap();
+                for k in 0..kernel_num {
+                    for r in (0..feature_map_width).step_by(pool_step) {
+                        for c in (0..feature_map_width).step_by(pool_step)  {
+                            let sub_matrix = cubed_output.slice(s![k,
+                                                                                                        r..(r + pool_step), 
+                                                                                                        c..(c + pool_step)]);
+                
+                            vec_output.push(sub_matrix.max().unwrap().clone());
                             
-                            pooled_c_index += 1;
+                        }
+                    }     
+                }   
+
+                let output = Array2::from_shape_vec((1, pooled_feature_map_width.pow(2) * kernel_num), vec_output).unwrap();
+                self.output = output;
+            },
+
+            NetLayerType::SecondaryConvolutionalLayer { input_feature_map_width, input_feature_map_num, kernel_num, kernel_width, pool_step, output_node_num } => {
+                //unimplemented!();
+                
+                
+                //converts flattened input into a square which kernels can traverse
+                let input: Array3<f64> = input.into_shape((input_feature_map_num, input_feature_map_width, input_feature_map_width)).unwrap();
+
+                //featurea map width is equal to the number of times a kernel will move right plus one
+                let feature_map_width = input_feature_map_width + 1 - kernel_width;
+
+                //shape follows convention of [depth, rows, columns]
+                //therefore temp output is such that each layer reprent a new feature map
+                let mut kernel_input: Array3<f64> = Array3::from_elem((input_feature_map_num, kernel_width, kernel_width), 0.0);
+
+                
+                //row
+                for r in 0..feature_map_width {
+
+                    //column
+                    for c in 0..feature_map_width {
+                        let square_kernel_input_segment = input.slice(s![.., r..(r + kernel_width), c..(c + kernel_width)]).to_owned();
+                        let flat_kernel_input_segment = square_kernel_input_segment.into_shape([input_feature_map_num, 1, kernel_width * kernel_width]).unwrap();
+
+                        if r == 0 && c == 0 {
+                            kernel_input = flat_kernel_input_segment
+                        }
+                        else {
+                            kernel_input.append(Axis(0), flat_kernel_input_segment.view()).unwrap()
                         }
 
-                        pooled_r_index += 1;
                     }
                 }
 
-                let flattened_pooled_output = pooled_temp_output.into_shape((1, num_of_kernels * pooled_feature_map_width * pooled_feature_map_width)).unwrap();
-                self.output = flattened_pooled_output;
+                let mut output: Array3<f64> = Array3::from_elem((input_feature_map_num, kernel_num, feature_map_width.pow(2),), 0.0);
+
+                for f in 0..input_feature_map_num {
+                    let temp_output = act_func.apply(kernel_input.slice(s![f, .., ..]).to_owned().dot(&self.weights)).reversed_axes();
+
+                    output.index_axis_mut(Axis(2), f).assign(&temp_output)
+                }
+
+                //self.output = output.into_shape((1, feature_map_width.pow(2) * kernel_num * input_feature_map_num)).unwrap();
+
                 
-                */                
+                let pooled_feature_map_width: usize = feature_map_width / pool_step;
+
+                //each column is a new feature map.
+                let output_4d = output.into_shape((input_feature_map_num, kernel_num, feature_map_width, feature_map_width)).unwrap();
+                let mut vec_output: Vec<f64> = Vec::new();
+
+                
+                for f in 0..input_feature_map_num {
+                    for k in 0..kernel_num {
+                        for r in (0..feature_map_width).step_by(pool_step) {
+                            for c in (0..feature_map_width).step_by(pool_step)  {
+                                let sub_matrix = output_4d.slice(s![f, k,
+                                                                                                        r..(r + pool_step), 
+                                                                                                        c..(c + pool_step),]);
+                                
+                                vec_output.push(sub_matrix.max().unwrap().clone());
+                            }
+                        }        
+                    }
+                }
+                
+                let output = Array2::from_shape_vec((1, pooled_feature_map_width.pow(2) * kernel_num * input_feature_map_num), vec_output).unwrap();
+                self.output = output;
             }
         }
     }
@@ -163,11 +229,21 @@ impl NetLayer {
                 layer_error
             },
 
-            NetLayerType::ConvolutionalLayer { input_width, num_of_kernels, kernel_width , output_node_num} => {
+            NetLayerType::PrimaryConvolutionalLayer { input_width, kernel_num, kernel_width , output_node_num, pool_step} => {
                 let square_input: Array2<f64> = input.into_shape((input_width, input_width)).unwrap();
                 
                 let feature_map_width = input_width + 1 - kernel_width;
-                let square_layer_error: Array2<f64> = layer_error.into_shape((feature_map_width * feature_map_width, num_of_kernels)).unwrap();
+                let pooled_feature_map_width: usize = feature_map_width / pool_step;
+                let cubed_layer_error: Array3<f64> = layer_error.into_shape((pooled_feature_map_width, pooled_feature_map_width, kernel_num)).unwrap();
+                let mut new_cubed_layer_error: Array3<f64> = Array3::from_elem((feature_map_width, feature_map_width, kernel_num), 0.0);
+
+                let ones = Array2::from_elem((2, 2), 1.0);
+                for k in 0..kernel_num {
+                    let feature_map = cubed_layer_error.slice(s![.., .., k]);
+                    new_cubed_layer_error.index_axis_mut(Axis(2), k).assign(&kron(&feature_map, &ones));
+                }
+
+                let square_layer_error = new_cubed_layer_error.into_shape((feature_map_width * feature_map_width, kernel_num)).unwrap();
 
                 let mut input_collection: Array2<f64> = Array2::from_elem((1, kernel_width * kernel_width), 0.0);
 
@@ -195,19 +271,20 @@ impl NetLayer {
 
                 let mut input_layer_error = Array2::from_elem((input_width, input_width), 0.0);
 
-                /*
-                Turned off calulating layer errors for Conv Layer
-                Note: when this code was implemented, there was no pooling of layers
+                
+                //Turned off calulating layer errors for Conv Layer
+                //Note: when this code was implemented, there was no pooling of layers
 
 
+                let cubed_layer_error: Array3<f64> = square_layer_error.into_shape((kernel_num, feature_map_width, feature_map_width)).unwrap();
 
-                for k in 0..num_of_kernels {
+                for k in 0..kernel_num {
+                    let feature_map_error = cubed_layer_error.slice(s![k, .., ..]).to_owned();
                     let mut weight_index = 0;
 
                     for r in 0..kernel_width {
                         for c in 0..kernel_width {
-                            let feature_map_error = cubed_layer_error.slice(s![k, .., ..]);
-                            let partial_input_error = feature_map_error.to_owned() * self.weights[(weight_index, k)];
+                            let partial_input_error = &feature_map_error * self.weights[(weight_index, k)];
 
                             for f_row in 0..feature_map_width {
                                 for f_col in 0..feature_map_width {
@@ -219,9 +296,13 @@ impl NetLayer {
                         }
                     }
                 }               
-                */
+                
 
                 input_layer_error.into_shape((1, input_width * input_width)).unwrap()
+            },
+
+            NetLayerType::SecondaryConvolutionalLayer { input_feature_map_width, input_feature_map_num, kernel_num, kernel_width, pool_step, output_node_num } => {
+                unimplemented!()
             }
         }
     }
@@ -244,10 +325,19 @@ pub enum NetLayerType {
         input_node_num: usize,
         output_node_num: usize
     },
-    ConvolutionalLayer {
+    PrimaryConvolutionalLayer {
         input_width: usize,
-        num_of_kernels: usize,
+        kernel_num: usize,
         kernel_width: usize,
+        pool_step: usize,
+        output_node_num: usize,
+    },
+    SecondaryConvolutionalLayer {
+        input_feature_map_width: usize,
+        input_feature_map_num: usize,
+        kernel_num: usize,
+        kernel_width: usize,
+        pool_step: usize,
         output_node_num: usize,
     }
 }
@@ -255,21 +345,27 @@ pub enum NetLayerType {
 impl NetLayerType {
     pub fn input_node_num(&self) -> usize {
         match self {
-            NetLayerType::ConvolutionalLayer { input_width, .. } => {
-                input_width * input_width
-            },
             NetLayerType::DenseLayer { input_node_num, .. } => {
                 input_node_num.clone()
+            },
+            NetLayerType::PrimaryConvolutionalLayer { input_width, .. } => {
+                input_width * input_width
+            },
+            NetLayerType::SecondaryConvolutionalLayer { ..} => {
+                unimplemented!()
             }
         }
     }
 
     pub fn output_node_num(&self) -> usize {
         match self {
-            NetLayerType::ConvolutionalLayer { output_node_num, .. } => {
+            NetLayerType::DenseLayer { output_node_num, .. } => {
+                output_node_num.clone()
+            }
+            NetLayerType::PrimaryConvolutionalLayer { output_node_num, .. } => {
                 output_node_num.clone()
             },
-            NetLayerType::DenseLayer { output_node_num, .. } => {
+            NetLayerType::SecondaryConvolutionalLayer { output_node_num , ..} => {
                 output_node_num.clone()
             }
         }

@@ -6,11 +6,11 @@ use ndarray::Array2;
 fn main() {
     println!("Running...");
 
-    let net_shape = NetShape::new(vec![NetLayerType::ConvolutionalLayer { input_width: 28, num_of_kernels: 4, kernel_width: 3, output_node_num: 2704 }, 
-                                                                NetLayerType::DenseLayer { input_node_num: 2704, output_node_num: 10 }]).unwrap();
+    let net_shape = NetShape::new(vec![NetLayerType::PrimaryConvolutionalLayer { input_width: 28, kernel_num: 4, kernel_width: 3, pool_step: 2, output_node_num: 676 }, 
+                                                                NetLayerType::DenseLayer { input_node_num: 676, output_node_num: 10 }]).unwrap();
 
 
-    let mut nn = NeuralNet::new(ActFunc::Sigmoid, net_shape, 2).unwrap();
+    let mut nn = NeuralNet::new(ActFunc::Sigmoid, net_shape, 3).unwrap();
 
     println!("a");
     
@@ -26,12 +26,12 @@ fn main() {
     let testing_data = TData::new(test_input.clone(), test_output.clone()).unwrap();
 
 
-    let tsettings = TSettings::new(300, 0.05, false, 50).unwrap();
+    let tsettings = TSettings::new(300, 0.05, false, 25).unwrap();
     nn.train(training_data, Some(testing_data), &tsettings).unwrap();
 
     
 
-    for i in (0..test_input.len()).step_by(test_input.len() / 3) {
+    for i in (0..test_input.len()).step_by(test_input.len() / 5) {
         nn.forward_propogate(test_input[i].clone());
         let output = nn.cached_output();
         let error = output - test_output[i].clone();
@@ -41,4 +41,6 @@ fn main() {
         println!("\nExpected: {:?}\nCalculated: {:?}\nError: {}", test_output[i], output, error);
         
     }
+
+    println!("NN: \n{:?}", nn);
 }
