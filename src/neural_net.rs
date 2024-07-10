@@ -15,12 +15,11 @@ use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, Seed
 
 
 pub struct NeuralNet {
-    act_func: ActFunc,
     layers: Vec<NetLayer>,
 }
 
 impl NeuralNet {
-    pub fn new(act_func: ActFunc, shape: NetShape, rand_seed: u64) -> Result<NeuralNet, String> {
+    pub fn new(shape: NetShape, rand_seed: u64) -> Result<NeuralNet, String> {
         let mut layers: Vec<NetLayer> = Vec::new();
         
         //Based on the provided shape of the network (# of neurons per layer), weights are generated at random with a uniform distribution betwee +-2
@@ -38,7 +37,6 @@ impl NeuralNet {
         }
         
         Ok(NeuralNet {
-            act_func,
             layers
         })
     }
@@ -108,7 +106,7 @@ impl NeuralNet {
     pub fn forward_propogate(&mut self, mut input: Array2<f64>) {
 
         for l_index in 0..self.layers.len() {
-            self.layers[l_index].forward_propogate(&self.act_func, input);
+            self.layers[l_index].forward_propogate(input);
             input = self.layers[l_index].output().clone()
         }
     }
@@ -119,10 +117,10 @@ impl NeuralNet {
             //output of th elayer right before this one, which makes it the input
             let temp_input = self.layers[l_index - 1].output().clone();
 
-            layer_delta = self.layers[l_index].back_propogate(&self.act_func, settings.alpha(), settings.dropout(), temp_input, layer_delta);
+            layer_delta = self.layers[l_index].back_propogate(settings.alpha(), settings.dropout(), temp_input, layer_delta);
         }
 
-        self.layers[0].back_propogate(&self.act_func, settings.alpha(), settings.dropout(), input, layer_delta);
+        self.layers[0].back_propogate(settings.alpha(), settings.dropout(), input, layer_delta);
     }
 
     pub fn input_node_num(&self) -> usize {
@@ -144,6 +142,6 @@ impl Debug for NeuralNet {
         for layer in self.layers.iter() {
             layers_string = format!("{}\n{:?}\n", layers_string, layer)
         }
-        write!(f, "Neural Net: \nActivation Function: {:?}\nLayers:\n {}", self.act_func, layers_string)
+        write!(f, "Neural Net: \nLayers:\n {}", layers_string)
     }
 }

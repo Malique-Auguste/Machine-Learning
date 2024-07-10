@@ -14,7 +14,7 @@ pub struct NetLayer {
 impl NetLayer {
     pub fn new(layer_type: NetLayerType, rng: &mut StdRng, range: &Uniform<f64>) -> Result<NetLayer, String> {
         match layer_type {
-            NetLayerType::DenseLayer{input_node_num, output_node_num} => {
+            NetLayerType::DenseLayer{input_node_num, output_node_num, ..} => {
                 if input_node_num == 0 {
                     return Err(format!("Input node num cannot equal zero"))
                 }
@@ -64,14 +64,14 @@ impl NetLayer {
         &self.layer_type
     }
 
-    pub fn forward_propogate(&mut self, act_func: &ActFunc, mut input: Array2<f64>) {
+    pub fn forward_propogate(&mut self, mut input: Array2<f64>) {
         match self.layer_type {
-            NetLayerType::DenseLayer {..} => {
+            NetLayerType::DenseLayer {act_func, ..} => {
                 input.push_column(ArrayView::from(&[1.0])).unwrap();
                 self.output = act_func.apply(input.dot(&self.weights))
             },
 
-            NetLayerType::PrimaryConvolutionalLayer { kernel_width, input_width, kernel_num, pool_step, .. } => {
+            NetLayerType::PrimaryConvolutionalLayer { kernel_width, input_width, kernel_num, pool_step, act_func, .. } => {
                 //converts flattened input into a square which kernels can traverse
                 input = input.into_shape([input_width, input_width]).unwrap();
 
@@ -127,7 +127,7 @@ impl NetLayer {
                 self.output = output;
             },
 
-            NetLayerType::SecondaryConvolutionalLayer { input_feature_map_width, input_feature_map_num, kernel_num, kernel_width, pool_step, output_node_num } => {
+            NetLayerType::SecondaryConvolutionalLayer { input_feature_map_width, input_feature_map_num, kernel_num, kernel_width, pool_step, output_node_num, act_func, .. } => {
                 //unimplemented!();
                 
                 
@@ -198,9 +198,9 @@ impl NetLayer {
         }
     }
 
-    pub fn back_propogate(&mut self, act_func: &ActFunc, alpha: f64, dropout: bool, mut input: Array2<f64>, mut layer_error: Array2<f64>) -> Array2<f64> {
+    pub fn back_propogate(&mut self, alpha: f64, dropout: bool, mut input: Array2<f64>, mut layer_error: Array2<f64>) -> Array2<f64> {
         match self.layer_type {
-            NetLayerType::DenseLayer {..} => {
+            NetLayerType::DenseLayer {act_func, ..} => {
                 //Array representing the error in the weights
                 let weight_deltas: Array2<f64>;
 
@@ -216,10 +216,18 @@ impl NetLayer {
                     input = input * dropout_vector * 2.0;
                 }
 
-                (weight_deltas, layer_error) = act_func.delta(layer_error, input, &self.weights);
+                (weight_deltas, layer_error) = {
+                    let new_weight_delta = input.reversed_axes().dot(&(layer_error.t().to_owned() * act_func.deriv(&self.output)));
+                    let new_layer_error = self.weights.dot(&layer_error);
+
+                    (new_weight_delta, new_layer_error)
+                    
+                };
+
+                
 
                 //"-alpha" so that this scaled add turns into a scaled minus
-                self.weights.scaled_add(-alpha, &weight_deltas);
+                //self.weights.scaled_add(-alpha, &weight_deltas);
                 
                 //removes error associated with bias node as the bias node doesn't backpropogate, that is: it has nothing connecitng to it
                 let last_row_index = layer_error.shape()[0] - 1;
@@ -229,7 +237,10 @@ impl NetLayer {
                 layer_error
             },
 
-            NetLayerType::PrimaryConvolutionalLayer { input_width, kernel_num, kernel_width , output_node_num, pool_step} => {
+            NetLayerType::PrimaryConvolutionalLayer { input_width, kernel_num, kernel_width , output_node_num, pool_step, act_func} => {
+                let act_func_deriv = act_func.deriv(&self.output);
+                let layer_error = layer_error * act_func_deriv.t();
+                
                 let square_input: Array2<f64> = input.into_shape((input_width, input_width)).unwrap();
                 
                 let feature_map_width = input_width + 1 - kernel_width;
@@ -301,7 +312,7 @@ impl NetLayer {
                 input_layer_error.into_shape((1, input_width * input_width)).unwrap()
             },
 
-            NetLayerType::SecondaryConvolutionalLayer { input_feature_map_width, input_feature_map_num, kernel_num, kernel_width, pool_step, output_node_num } => {
+            NetLayerType::SecondaryConvolutionalLayer { input_feature_map_width, input_feature_map_num, kernel_num, kernel_width, pool_step, output_node_num , ..} => {
                 unimplemented!()
             }
         }
@@ -323,7 +334,8 @@ impl Debug for NetLayer {
 pub enum NetLayerType {
     DenseLayer{
         input_node_num: usize,
-        output_node_num: usize
+        output_node_num: usize,
+        act_func: ActFunc,
     },
     PrimaryConvolutionalLayer {
         input_width: usize,
@@ -331,6 +343,7 @@ pub enum NetLayerType {
         kernel_width: usize,
         pool_step: usize,
         output_node_num: usize,
+        act_func: ActFunc,
     },
     SecondaryConvolutionalLayer {
         input_feature_map_width: usize,
@@ -339,6 +352,7 @@ pub enum NetLayerType {
         kernel_width: usize,
         pool_step: usize,
         output_node_num: usize,
+        act_func: ActFunc,
     }
 }
 
