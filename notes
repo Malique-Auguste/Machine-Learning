@@ -85,4 +85,46 @@ pooling
 300) Training Error: 0.26424    Testing Error: 0.44987  Time Taken: 147.0190416s
 
 
-rand = 3
+just dense layers | 784 -> 40 -> 10 | rand = 2
+0) Training Error: 1.20309      Testing Error: 0.98277  Time Taken: 2.426013s
+6) Training Error: 0.55442      Testing Error: 0.66141  Time Taken: 14.1702255s
+12) Training Error: 0.41212     Testing Error: 0.53873  Time Taken: 14.3293489s
+18) Training Error: 0.34134     Testing Error: 0.48166  Time Taken: 14.417426s
+24) Training Error: 0.29395     Testing Error: 0.44325  Time Taken: 14.028297s
+30) Training Error: 0.25797     Testing Error: 0.41565  Time Taken: 14.1603539s
+36) Training Error: 0.22969     Testing Error: 0.39539  Time Taken: 14.1625296s
+42) Training Error: 0.20688     Testing Error: 0.37928  Time Taken: 14.5005034s
+48) Training Error: 0.18820     Testing Error: 0.36532  Time Taken: 14.2604235s
+54) Training Error: 0.17253     Testing Error: 0.35305  Time Taken: 14.3282517s
+60) Training Error: 0.15912     Testing Error: 0.34214  Time Taken: 14.2526782s
+66) Training Error: 0.14748     Testing Error: 0.33240  Time Taken: 14.3332543s
+72) Training Error: 0.13728     Testing Error: 0.32371  Time Taken: 14.6386122s
+78) Training Error: 0.12826     Testing Error: 0.31591  Time Taken: 14.3210638s
+84) Training Error: 0.12021     Testing Error: 0.30889  Time Taken: 14.3436234s
+90) Training Error: 0.11295     Testing Error: 0.30257  Time Taken: 14.2620069s
+96) Training Error: 0.10637     Testing Error: 0.29684  Time Taken: 14.3285139s
+100) Training Error: 0.10231    Testing Error: 0.29330  Time Taken: 9.6387168s
+
+
+conv layer then dense | 784 -> 676 -> 10 | relu then sig func | 4kernels | pool step 2 | rand 2 | alpha 0.005
+0) Training Error: 2.54710      Testing Error: 2.03414  Time Taken: 10.6626051s
+10) Training Error: 0.88010     Testing Error: 0.84977  Time Taken: 101.7448307s
+20) Training Error: 0.77995     Testing Error: 0.76104  Time Taken: 103.8286936s
+30) Training Error: 0.71338     Testing Error: 0.69745  Time Taken: 101.5770321s
+40) Training Error: 0.68097     Testing Error: 0.68034  Time Taken: 104.336666s
+50) Training Error: 0.65062     Testing Error: 0.67871  Time Taken: 101.5055207s
+60) Training Error: 0.61945     Testing Error: 0.68617  Time Taken: 96.7840348s
+70) Training Error: 0.59588     Testing Error: 0.69517  Time Taken: 98.3553048s
+80) Training Error: 0.57542     Testing Error: 0.69431  Time Taken: 100.9226763s
+90) Training Error: 0.55605     Testing Error: 0.67625  Time Taken: 97.8624822s
+100) Training Error: 0.54681    Testing Error: 0.65824  Time Taken: 96.6140584s
+110) Training Error: 0.55320    Testing Error: 0.64398  Time Taken: 95.7028566s
+120) Training Error: 0.57293    Testing Error: 0.62989  Time Taken: 97.8376134s
+130) Training Error: 0.59811    Testing Error: 0.62895  Time Taken: 96.0958256s
+140) Training Error: 0.61985    Testing Error: 0.64089  Time Taken: 98.2608724s
+150) Training Error: 0.62895    Testing Error: 0.64994  Time Taken: 94.2482708s
+160) Training Error: 0.60625    Testing Error: 0.64472  Time Taken: 94.1769061s
+170) Training Error: 0.56992    Testing Error: 0.62870  Time Taken: 97.7448653s
+180) Training Error: 0.53583    Testing Error: 0.60208  Time Taken: 94.9337876s
+190) Training Error: 0.50720    Testing Error: 0.57380  Time Taken: 96.9495805s
+200) Training Error: 0.48363    Testing Error: 0.55115  Time Taken: 95.4522474s

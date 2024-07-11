@@ -23,10 +23,10 @@ mod tests {
 
     #[test]
     fn basic_net_2() {
-        let net_shape = NetShape::new(vec![NetLayerType::DenseLayer { input_node_num: 2, output_node_num: 2 }, 
-                                                                NetLayerType::DenseLayer { input_node_num: 2, output_node_num: 1 }]).unwrap();
+        let net_shape = NetShape::new(vec![NetLayerType::DenseLayer { input_node_num: 2, output_node_num: 2, act_func: ActFunc::ReLU}, 
+                                                                NetLayerType::DenseLayer { input_node_num: 2, output_node_num: 1, act_func: ActFunc::ReLU}]).unwrap();
 
-        let mut nn = NeuralNet::new(ActFunc::ReLU, net_shape, 1).unwrap();
+        let mut nn = NeuralNet::new(net_shape, 1).unwrap();
         println!("\nNN:\n{:?}\n", nn);
 
         let input: Vec<Array2<f64>> = vec![arr2(&[[1.0, -3.0]]),
@@ -63,7 +63,7 @@ mod tests {
 
         let training_data = TData::new(input, expected_output).unwrap();
         let testing_data = TData::new(test_input, test_output).unwrap();
-        let tsettings = TSettings::new(150, 0.001, false, 5).unwrap();
+        let tsettings = TSettings::new(150, 0.01, false, 5).unwrap();
 
         nn.train(training_data, Some(testing_data), &tsettings).unwrap();
     }
@@ -71,10 +71,10 @@ mod tests {
 
     #[test]
     fn basic_net_sig() {
-        let net_shape = NetShape::new(vec![NetLayerType::DenseLayer { input_node_num: 2, output_node_num: 3 }, 
-                                                                    NetLayerType::DenseLayer { input_node_num: 3, output_node_num: 1 }]).unwrap();
+        let net_shape = NetShape::new(vec![NetLayerType::DenseLayer { input_node_num: 2, output_node_num: 3, act_func: ActFunc::Sigmoid}, 
+                                                                    NetLayerType::DenseLayer { input_node_num: 3, output_node_num: 1, act_func: ActFunc::Sigmoid}]).unwrap();
 
-        let mut nn = NeuralNet::new(ActFunc::Sigmoid, net_shape, 8).unwrap();
+        let mut nn = NeuralNet::new(net_shape, 7).unwrap();
         let input: Vec<Array2<f64>> = vec![arr2(&[[2.0, 1.0]]),
                                             arr2(&[[3.0, -2.0]]),
                                             arr2(&[[-10.0, 5.5]]),
@@ -109,7 +109,7 @@ mod tests {
 
         let training_data = TData::new(input, expected_output).unwrap();
         let testing_data = TData::new(test_input, test_output).unwrap();
-        let tsettings = TSettings::new(350, 0.4, false, 10).unwrap();
+        let tsettings = TSettings::new(350, 0.5, false, 10).unwrap();
 
 
 
@@ -119,10 +119,10 @@ mod tests {
 
     #[test]
     fn xor() {
-        let net_shape = NetShape::new(vec![NetLayerType::DenseLayer { input_node_num: 2, output_node_num: 3 }, 
-                                                                NetLayerType::DenseLayer { input_node_num: 3, output_node_num: 1 }]).unwrap();
+        let net_shape = NetShape::new(vec![NetLayerType::DenseLayer { input_node_num: 2, output_node_num: 3, act_func: ActFunc::Sigmoid}, 
+                                                                NetLayerType::DenseLayer { input_node_num: 3, output_node_num: 1, act_func: ActFunc::Sigmoid}]).unwrap();
 
-        let mut nn = NeuralNet::new(ActFunc::Sigmoid, net_shape, 7).unwrap();
+        let mut nn = NeuralNet::new(net_shape, 7).unwrap();
         let input: Vec<Array2<f64>> = vec![arr2(&[[0.0, 0.0]]),
                                             arr2(&[[0.0, 1.0]]),
                                             arr2(&[[1.0, 0.0]]),
@@ -154,11 +154,11 @@ mod tests {
     fn dense_number_rec() {
         println!("Running...");
 
-        let net_shape = NetShape::new(vec![NetLayerType::DenseLayer { input_node_num: 784, output_node_num: 40 }, 
-                                                                    NetLayerType::DenseLayer { input_node_num: 40, output_node_num: 10 }]).unwrap();
+        let net_shape = NetShape::new(vec![NetLayerType::DenseLayer { input_node_num: 784, output_node_num: 40, act_func: ActFunc::Sigmoid }, 
+                                                                    NetLayerType::DenseLayer { input_node_num: 40, output_node_num: 10, act_func: ActFunc::Sigmoid }]).unwrap();
 
 
-        let mut nn = NeuralNet::new(ActFunc::Sigmoid, net_shape, 2).unwrap();
+        let mut nn = NeuralNet::new(net_shape, 2).unwrap();
 
         println!("a");
         

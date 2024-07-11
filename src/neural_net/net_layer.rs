@@ -96,7 +96,6 @@ impl NetLayer {
                         else {
                             kernel_input.append(Axis(0), flat_kernel_input_segment.view()).unwrap()
                         }
-
                     }
                 }
 
@@ -227,7 +226,7 @@ impl NetLayer {
                 
 
                 //"-alpha" so that this scaled add turns into a scaled minus
-                //self.weights.scaled_add(-alpha, &weight_deltas);
+                self.weights.scaled_add(-alpha, &weight_deltas);
                 
                 //removes error associated with bias node as the bias node doesn't backpropogate, that is: it has nothing connecitng to it
                 let last_row_index = layer_error.shape()[0] - 1;
@@ -245,16 +244,16 @@ impl NetLayer {
                 
                 let feature_map_width = input_width + 1 - kernel_width;
                 let pooled_feature_map_width: usize = feature_map_width / pool_step;
-                let cubed_layer_error: Array3<f64> = layer_error.into_shape((pooled_feature_map_width, pooled_feature_map_width, kernel_num)).unwrap();
-                let mut new_cubed_layer_error: Array3<f64> = Array3::from_elem((feature_map_width, feature_map_width, kernel_num), 0.0);
+                let cubed_layer_error: Array3<f64> = layer_error.into_shape((kernel_num, pooled_feature_map_width, pooled_feature_map_width)).unwrap();
+                let mut new_cubed_layer_error: Array3<f64> = Array3::from_elem((kernel_num, feature_map_width, feature_map_width), 0.0);
 
-                let ones = Array2::from_elem((2, 2), 1.0);
+                let ones = Array2::from_elem((pool_step, pool_step), 1.0);
                 for k in 0..kernel_num {
-                    let feature_map = cubed_layer_error.slice(s![.., .., k]);
-                    new_cubed_layer_error.index_axis_mut(Axis(2), k).assign(&kron(&feature_map, &ones));
+                    let feature_map = cubed_layer_error.slice(s![k, .., ..]);
+                    new_cubed_layer_error.index_axis_mut(Axis(0), k).assign(&kron(&feature_map, &ones));
                 }
 
-                let square_layer_error = new_cubed_layer_error.into_shape((feature_map_width * feature_map_width, kernel_num)).unwrap();
+                let square_layer_error = new_cubed_layer_error.reversed_axes().into_shape((feature_map_width * feature_map_width, kernel_num)).unwrap();
 
                 let mut input_collection: Array2<f64> = Array2::from_elem((1, kernel_width * kernel_width), 0.0);
 
@@ -278,7 +277,7 @@ impl NetLayer {
                 let weight_delta = input_collection.dot(&square_layer_error);
 
                 //"-alpha" so that this scaled add turns into a scaled minus
-                self.weights.scaled_add(-alpha, &weight_delta);
+                self.weights.scaled_add(-alpha.powi(2), &weight_delta);
 
                 let mut input_layer_error = Array2::from_elem((input_width, input_width), 0.0);
 
