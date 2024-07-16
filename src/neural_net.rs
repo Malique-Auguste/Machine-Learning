@@ -3,15 +3,14 @@ pub mod net_layer;
 pub mod net_shape;
 pub mod training_helpers;
 
-use act_func::ActFunc;
-use net_layer::{NetLayer, NetLayerType};
+use net_layer::NetLayer;
 use net_shape::NetShape;
 use training_helpers::{TData, TSettings};
 
 use std::time::Instant;
 use std::fmt::Debug;
-use ndarray::{ Array2, ArrayView, s};
-use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, SeedableRng};
+use ndarray::Array2;
+use rand::{distributions::Uniform, rngs::StdRng, SeedableRng};
 
 
 pub struct NeuralNet {

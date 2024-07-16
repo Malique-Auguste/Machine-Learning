@@ -1,7 +1,7 @@
-use std::{fmt::Debug, process::Output};
+use std::fmt::Debug;
 
 use super::act_func::ActFunc;
-use ndarray::{s, Array, Array2, Array3, ArrayView, Axis, linalg::kron};
+use ndarray::{s, Array2, Array3, ArrayView, Axis, linalg::kron};
 use ndarray_stats::QuantileExt;
 use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, SeedableRng};
 
@@ -126,7 +126,7 @@ impl NetLayer {
                 self.output = output;
             },
 
-            NetLayerType::SecondaryConvolutionalLayer { input_feature_map_width, input_feature_map_num, kernel_num, kernel_width, pool_step, output_node_num, act_func, .. } => {
+            NetLayerType::SecondaryConvolutionalLayer { input_feature_map_width, input_feature_map_num, kernel_num, kernel_width, pool_step, act_func, .. } => {
                 //unimplemented!();
                 
                 
@@ -236,7 +236,7 @@ impl NetLayer {
                 layer_error
             },
 
-            NetLayerType::PrimaryConvolutionalLayer { input_width, kernel_num, kernel_width , output_node_num, pool_step, act_func} => {
+            NetLayerType::PrimaryConvolutionalLayer { input_width, kernel_num, kernel_width , pool_step, act_func, ..} => {
                 let act_func_deriv = act_func.deriv(&self.output);
                 let layer_error = layer_error * act_func_deriv.t();
                 
@@ -311,7 +311,7 @@ impl NetLayer {
                 input_layer_error.into_shape((1, input_width * input_width)).unwrap()
             },
 
-            NetLayerType::SecondaryConvolutionalLayer { input_feature_map_width, input_feature_map_num, kernel_num, kernel_width, pool_step, output_node_num , ..} => {
+            NetLayerType::SecondaryConvolutionalLayer { ..} => {
                 unimplemented!()
             }
         }

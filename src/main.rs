@@ -1,5 +1,5 @@
-use machine_learning::neural_net::{*, act_func::*, training_helpers::*, net_shape::*, net_layer::*};
-use machine_learning::dataset_handler::*;
+use ml::neural_net::{*, act_func::*, training_helpers::*, net_shape::*, net_layer::*};
+use ml::dataset_handler::*;
 
 use ndarray::Array2;
 
