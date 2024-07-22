@@ -59,18 +59,6 @@ impl TSettings {
             Err("Print frequency cannot be greater than # iterations".into())
         }
         else if alpha < 1.0 && alpha > 0.0 {
-            if let Some(path) = min_train_err_save_path.clone() {
-                if !Path::new(&path).exists() {
-                    return Err(format!("Min train err save path ({}) doesn't exist.", path))
-                }
-            }
-
-            if let Some(path) = min_test_err_save_path.clone() {
-                if !Path::new(&path).exists() {
-                    return Err(format!("Min test err save path ({}) doesn't exist.", path))
-                }
-            }
-
             Ok(TSettings {
                 iterations,
                 alpha,
