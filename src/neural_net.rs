@@ -185,7 +185,8 @@ impl NeuralNet {
             Err(e) => return Err(format!("Error in reading file from path ({}): {}", path, e))
         };
 
-        match serde_json::from_str(&file_content) {
+
+        match serde_json::from_str(file_content.trim()) {
             Ok(nn) => Ok(nn),
             Err(e) => Err(format!("Error in deserializing nn from path ({}): {}", path, e))
         }
