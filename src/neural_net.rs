@@ -7,9 +7,10 @@ use net_layer::NetLayer;
 use net_shape::NetShape;
 use training_helpers::{TData, TSettings};
 
+use std::io::Read;
 use std::{io::Write, time::Instant};
 use std::fs::OpenOptions;
-use std::fmt::Debug;
+use std::fmt::{format, Debug};
 use ndarray::Array2;
 use rand::{distributions::Uniform, rngs::StdRng, SeedableRng};
 use serde::{Serialize, Deserialize};
@@ -168,6 +169,25 @@ impl NeuralNet {
         match file.write_all(self_as_json.as_bytes()) {
             Ok(_) => Ok(()),
             Err(e) => Err(format!("Error writing to file {}: {}", path, e))
+        }
+    }
+
+    pub fn load(path: &str) -> Result<NeuralNet, String> {
+        let mut file = match OpenOptions::new().read(true).open(path) {
+            Ok(f) => f,
+            Err(e) => return Err(format!("Error reading file {}: {}", path, e))
+        };
+
+        let mut file_content = String::new();
+
+        match file.read_to_string(&mut file_content) {
+            Ok(_) => (),
+            Err(e) => return Err(format!("Error in reading file from path ({}): {}", path, e))
+        };
+
+        match serde_json::from_str(&file_content) {
+            Ok(nn) => Ok(nn),
+            Err(e) => Err(format!("Error in deserializing nn from path ({}): {}", path, e))
         }
     }
 }
