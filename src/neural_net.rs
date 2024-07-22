@@ -171,7 +171,7 @@ impl NeuralNet {
             Err(e) => return Err(format!("Error converting self to json: {}", e))
         };
 
-        let mut file = match OpenOptions::new().write(true).truncate(true).open(path) {
+        let mut file = match OpenOptions::new().write(true).truncate(true).create(true).open(path) {
             Ok(f) => f,
             Err(e) => return Err(format!("Error reading file {}: {}", path, e))
         };
