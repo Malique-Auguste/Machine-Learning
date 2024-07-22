@@ -63,7 +63,7 @@ mod tests {
 
         let training_data = TData::new(input, expected_output).unwrap();
         let testing_data = TData::new(test_input, test_output).unwrap();
-        let tsettings = TSettings::new(150, 0.01, false, 5, None).unwrap();
+        let tsettings = TSettings::new(150, 0.01, false, 5, None, None).unwrap();
 
         nn.train(training_data, Some(testing_data), &tsettings).unwrap();
     }
@@ -109,7 +109,7 @@ mod tests {
 
         let training_data = TData::new(input, expected_output).unwrap();
         let testing_data = TData::new(test_input, test_output).unwrap();
-        let tsettings = TSettings::new(350, 0.5, false, 10, None).unwrap();
+        let tsettings = TSettings::new(350, 0.5, false, 10, None, None).unwrap();
 
 
 
@@ -135,7 +135,7 @@ mod tests {
                                                     Array2::from_elem((1, 1), 0.0)];
 
         let training_data = TData::new(input.clone(), expected_output.clone()).unwrap();
-        let tsettings = TSettings::new(2000, 0.09, false, 10, None).unwrap();
+        let tsettings = TSettings::new(2000, 0.09, false, 10, None, None).unwrap();
 
         nn.train(training_data, None, &tsettings).unwrap();
         println!("\n");
@@ -174,7 +174,7 @@ mod tests {
         let testing_data = TData::new(test_input.clone(), test_output.clone()).unwrap();
 
 
-        let tsettings = TSettings::new(100, 0.005, false, 15, None).unwrap();
+        let tsettings = TSettings::new(100, 0.005, false, 15, None, None).unwrap();
         nn.train(training_data, Some(testing_data), &tsettings).unwrap();
 
         

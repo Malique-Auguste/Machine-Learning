@@ -26,7 +26,7 @@ fn main() {
     let testing_data = TData::new(test_input.clone(), test_output.clone()).unwrap();
 
 
-    let tsettings = TSettings::new(300, 0.005, false, 20, None).unwrap();
+    let tsettings = TSettings::new(300, 0.005, false, 20, None, None).unwrap();
     nn.train(training_data, Some(testing_data), &tsettings).unwrap();
 
     

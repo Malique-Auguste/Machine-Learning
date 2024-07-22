@@ -49,46 +49,36 @@ pub struct TSettings{
     print_frequency: usize,
     //1st string represents path to nn version with lowest error
     //2nd string represent path to current itertion of net
-    save_paths: Option<[String; 2]>
+    min_train_err_save_path: Option<String>,
+    min_test_err_save_path: Option<String>
 }
 
 impl TSettings {
-    pub fn new(iterations: usize, alpha: f64, dropout: bool, print_frequency: usize, save_paths: Option<[String; 2]>) -> Result<TSettings, String> {
+    pub fn new(iterations: usize, alpha: f64, dropout: bool, print_frequency: usize, min_train_err_save_path: Option<String>, min_test_err_save_path: Option<String>) -> Result<TSettings, String> {
         if print_frequency > iterations {
-            Err("Print frequency cannot be greater than #iterations".into())
+            Err("Print frequency cannot be greater than # iterations".into())
         }
         else if alpha < 1.0 && alpha > 0.0 {
-            match save_paths {
-                Some(paths) => {
-                    if Path::new(&paths[0]).exists() {
-                        if Path::new(&paths[1]).exists() {
-                            Ok(TSettings {
-                                iterations,
-                                alpha,
-                                dropout,
-                                print_frequency,
-                                save_paths: Some(paths)
-                            })
-                        }
-                        else {
-                            Err(format!("Save path 2 ({}) doesn't exist.", paths[1]))
-                        }
-                    }
-                    else {
-                        Err(format!("Save path 1 ({}) doesn't exist.", paths[0]))
-                    }
-                },
-
-                None => {
-                    Ok(TSettings {
-                        iterations,
-                        alpha,
-                        dropout,
-                        print_frequency,
-                        save_paths
-                    })
+            if let Some(path) = min_train_err_save_path.clone() {
+                if !Path::new(&path).exists() {
+                    return Err(format!("Min train err save path ({}) doesn't exist.", path))
                 }
             }
+
+            if let Some(path) = min_test_err_save_path.clone() {
+                if !Path::new(&path).exists() {
+                    return Err(format!("Min test err save path ({}) doesn't exist.", path))
+                }
+            }
+
+            Ok(TSettings {
+                iterations,
+                alpha,
+                dropout,
+                print_frequency,
+                min_train_err_save_path,
+                min_test_err_save_path
+            })
         }
         else {
             Err("Alpha must be between 1 and 0".into())
@@ -111,7 +101,11 @@ impl TSettings {
         self.print_frequency
     }
 
-    pub fn save_paths(&self) -> &Option<[String; 2]> {
-        &self.save_paths
+    pub fn min_train_err_save_path(&self) -> &Option<String> {
+        &self.min_train_err_save_path
+    }
+
+    pub fn min_test_err_save_path(&self) -> &Option<String> {
+        &self.min_test_err_save_path
     }
 }
