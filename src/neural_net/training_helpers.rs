@@ -1,5 +1,6 @@
 use ndarray::Array2;
 use serde::{Serialize, Deserialize};
+use std::path::Path;
 
 
 //Training Data
@@ -39,27 +40,55 @@ impl TData {
     }
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 //training settings
 pub struct TSettings{
     iterations: usize,
     alpha: f64,
     dropout: bool,
-    print_frequency: usize
+    print_frequency: usize,
+    //1st string represents path to nn version with lowest error
+    //2nd string represent path to current itertion of net
+    save_paths: Option<[String; 2]>
 }
 
 impl TSettings {
-    pub fn new(iterations: usize, alpha: f64, dropout: bool, print_frequency: usize) -> Result<TSettings, String> {
+    pub fn new(iterations: usize, alpha: f64, dropout: bool, print_frequency: usize, save_paths: Option<[String; 2]>) -> Result<TSettings, String> {
         if print_frequency > iterations {
             Err("Print frequency cannot be greater than #iterations".into())
         }
         else if alpha < 1.0 && alpha > 0.0 {
-            Ok(TSettings {
-                iterations,
-                alpha,
-                dropout,
-                print_frequency
-            })
+            match save_paths {
+                Some(paths) => {
+                    if Path::new(&paths[0]).exists() {
+                        if Path::new(&paths[1]).exists() {
+                            Ok(TSettings {
+                                iterations,
+                                alpha,
+                                dropout,
+                                print_frequency,
+                                save_paths: Some(paths)
+                            })
+                        }
+                        else {
+                            Err(format!("Save path 2 ({}) doesn't exist.", paths[1]))
+                        }
+                    }
+                    else {
+                        Err(format!("Save path 1 ({}) doesn't exist.", paths[0]))
+                    }
+                },
+
+                None => {
+                    Ok(TSettings {
+                        iterations,
+                        alpha,
+                        dropout,
+                        print_frequency,
+                        save_paths
+                    })
+                }
+            }
         }
         else {
             Err("Alpha must be between 1 and 0".into())
@@ -80,5 +109,9 @@ impl TSettings {
 
     pub fn print_frequency(&self) -> usize {
         self.print_frequency
+    }
+
+    pub fn save_paths(&self) -> &Option<[String; 2]> {
+        &self.save_paths
     }
 }

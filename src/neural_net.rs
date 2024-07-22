@@ -55,6 +55,7 @@ impl NeuralNet {
         }
         
         let mut start = Instant::now();
+        let mut lowest_error = f64::MAX;
 
         for iter_num in 0..(settings.iterations() + 1) {
             let training_error = {
@@ -74,6 +75,22 @@ impl NeuralNet {
 
             if settings.print_frequency() != 0 {
                 if iter_num % (settings.iterations() / settings.print_frequency()) == 0 || iter_num == settings.iterations() {
+                    if let Some(paths) = settings.save_paths() {
+                        if training_error < lowest_error {
+                            lowest_error = training_error;
+                            
+                            match self.save(&paths[0]) {
+                                Ok(_) => (),
+                                Err(e) => return Err(e)
+                            }
+                        }
+
+                        match self.save(&paths[1]) {
+                            Ok(_) => (),
+                            Err(e) => return Err(e)
+                        }
+                    }
+
                     match testing_data {
                         Some(_) => {
                             let mut testing_error = 0.0;
