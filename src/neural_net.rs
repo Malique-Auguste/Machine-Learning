@@ -7,12 +7,15 @@ use net_layer::NetLayer;
 use net_shape::NetShape;
 use training_helpers::{TData, TSettings};
 
-use std::time::Instant;
+use std::{io::Write, time::Instant};
+use std::fs::OpenOptions;
 use std::fmt::Debug;
 use ndarray::Array2;
 use rand::{distributions::Uniform, rngs::StdRng, SeedableRng};
+use serde::{Serialize, Deserialize};
 
 
+#[derive(Serialize, Deserialize)]
 pub struct NeuralNet {
     layers: Vec<NetLayer>,
 }
@@ -132,6 +135,23 @@ impl NeuralNet {
 
     pub fn cached_output(&self) -> &Array2<f64> {
         self.layers.last().unwrap().output()
+    }
+
+    pub fn save(&self, path: &str) -> Result<(), String> {
+        let self_as_json = match serde_json::to_string_pretty(&self) {
+            Ok(json) => json,
+            Err(e) => return Err(format!("Error converting self to json: {}", e))
+        };
+
+        let mut file = match OpenOptions::new().write(true).open(path) {
+            Ok(f) => f,
+            Err(e) => return Err(format!("Error reading file {}: {}", path, e))
+        };
+
+        match file.write_all(self_as_json.as_bytes()) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("Error writing to file {}: {}", path, e))
+        }
     }
 }
 

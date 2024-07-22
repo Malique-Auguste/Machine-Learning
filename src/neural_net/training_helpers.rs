@@ -1,7 +1,9 @@
 use ndarray::Array2;
+use serde::{Serialize, Deserialize};
+
 
 //Training Data
-#[derive( Clone)]
+#[derive( Clone, Serialize, Deserialize)]
 pub struct TData {
     input: Vec<Array2<f64>>,
     output: Vec<Array2<f64>>
@@ -37,7 +39,7 @@ impl TData {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 //training settings
 pub struct TSettings{
     iterations: usize,

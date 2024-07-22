@@ -1,9 +1,10 @@
 use ndarray::Array2;
+use serde::{Serialize, Deserialize};
 use std::f64::consts::E;
 
 
 //Activation Funciton
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum ActFunc {
     ReLU,
     Sigmoid

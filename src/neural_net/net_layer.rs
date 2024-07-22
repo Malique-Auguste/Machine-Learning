@@ -4,7 +4,9 @@ use super::act_func::ActFunc;
 use ndarray::{s, Array2, Array3, ArrayView, Axis, linalg::kron};
 use ndarray_stats::QuantileExt;
 use rand::{distributions::{Distribution, Uniform, Bernoulli}, rngs::StdRng, SeedableRng};
+use serde::{Serialize, Deserialize};
 
+#[derive(Serialize, Deserialize)]
 pub struct NetLayer {
     layer_type: NetLayerType,
     weights: Array2<f64>,
@@ -329,7 +331,7 @@ impl Debug for NetLayer {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum NetLayerType {
     DenseLayer{
         input_node_num: usize,

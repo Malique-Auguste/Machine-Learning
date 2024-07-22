@@ -1,7 +1,9 @@
 use super::net_layer::NetLayerType;
+use serde::{Serialize, Deserialize};
+
 
 //Network Shape
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NetShape {
     layer_types: Vec<NetLayerType>,
 }
