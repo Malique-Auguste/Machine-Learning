@@ -10,7 +10,7 @@ use training_helpers::{TData, TSettings};
 use std::io::Read;
 use std::{io::Write, time::Instant};
 use std::fs::OpenOptions;
-use std::fmt::{format, Debug};
+use std::fmt::Debug;
 use ndarray::Array2;
 use rand::{distributions::Uniform, rngs::StdRng, SeedableRng};
 use serde::{Serialize, Deserialize};
@@ -69,7 +69,9 @@ impl NeuralNet {
 
                     current_error += (&layer_delta * &layer_delta).sum();
 
-                    self.backward_propogate(training_data.input()[i].clone(), layer_delta, settings)
+                    if iter_num != 0 {
+                        self.backward_propogate(training_data.input()[i].clone(), layer_delta, settings)
+                    }
                 } 
 
                 current_error / training_data.input().len() as f64
@@ -106,7 +108,7 @@ impl NeuralNet {
                             testing_error = testing_error / data.input().len() as f64;
 
                             //saves nn if has lowest test err
-                            if let Some(path) = settings.min_train_err_save_path() {
+                            if let Some(path) = settings.min_test_err_save_path() {
                                 if training_error < lowest_testing_error {
                                     lowest_testing_error = training_error;
                                     

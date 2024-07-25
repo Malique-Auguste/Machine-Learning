@@ -1,6 +1,5 @@
 use ndarray::Array2;
 use serde::{Serialize, Deserialize};
-use std::path::Path;
 
 
 //Training Data
